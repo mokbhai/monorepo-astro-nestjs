@@ -1,0 +1,330 @@
+---
+import '../styles/global.css';
+import { Button } from '@workspace-starter/ui';
+import { trpcVanilla } from '../lib/trpc';
+import { UsersIsland } from '../components/UsersIsland';
+
+const workspaceCards = [
+  {
+    title: 'apps/web',
+    type: 'Astro + React',
+    body: 'A polished starter homepage that demonstrates shared UI, SSR, and React islands.',
+  },
+  {
+    title: 'apps/api',
+    type: 'NestJS + tRPC',
+    body: 'A sample API with typed procedures that the web app can consume end-to-end.',
+  },
+  {
+    title: 'packages/ui',
+    type: 'Shared UI',
+    body: 'Reusable components for buttons and future design-system primitives.',
+  },
+  {
+    title: 'packages/types',
+    type: 'Shared contracts',
+    body: 'Cross-workspace types that keep frontend and backend examples aligned.',
+  },
+  {
+    title: 'packages/config-typescript',
+    type: 'Shared config',
+    body: 'Reusable tsconfig presets for Node, Astro, React libraries, and NestJS.',
+  },
+];
+
+const commands = [
+  'pnpm install',
+  'pnpm dev',
+  'pnpm build',
+  'pnpm --filter @workspace-starter/web dev',
+];
+
+const guides = [
+  {
+    path: 'README.md',
+    description: 'Start here for setup, commands, and workspace layout.',
+  },
+  {
+    path: 'docs/guides/pnpm-workspace.md',
+    description: 'How local packages, catalogs, and filtering work in this repo.',
+  },
+  {
+    path: 'docs/guides/turborepo.md',
+    description: 'Task graphs, caching, and how the root scripts map to Turbo.',
+  },
+  {
+    path: 'docs/guides/customizing-the-template.md',
+    description: 'How to rename the scope and extend the starter for your own product.',
+  },
+];
+
+let users: Array<{ id: string; name: string; email: string }> = [];
+
+try {
+  users = await trpcVanilla.users.list.query();
+} catch {
+  // Keep the page renderable when the API is offline during builds.
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A generic PNPM workspace and TurboRepo starter with Astro, React, NestJS, shared UI, and shared types."
+    />
+    <title>PNPM Turbo Workspace Starter</title>
+  </head>
+  <body class="selection:bg-cyan-200 selection:text-slate-950">
+    <main class="starter-shell">
+      <section class="mx-auto max-w-7xl px-6 py-12 md:px-10 md:py-16">
+        <div class="grid gap-10 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)] xl:items-start">
+          <div class="space-y-8">
+            <span class="section-label">Monorepo Showcase Starter</span>
+            <div class="space-y-6">
+              <h1 class="max-w-4xl text-5xl font-semibold tracking-[-0.05em] text-slate-950 md:text-7xl">
+                A PNPM workspace starter that already feels like a real product.
+              </h1>
+              <p class="max-w-2xl text-lg leading-8 text-slate-600 md:text-xl">
+                Start with TurboRepo, Astro + React, NestJS, shared packages, and a polished sample surface that demonstrates how the workspace fits together.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <Button variant="default" size="lg" type="button">
+                Run `pnpm dev`
+              </Button>
+              <a
+                href="#workspace"
+                class="inline-flex h-14 items-center justify-center rounded-full border border-slate-300 bg-white/80 px-7 text-base font-semibold text-slate-900 shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:border-slate-400 hover:bg-white"
+              >
+                Explore the workspace
+              </a>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-3">
+              <div class="glass-card p-5">
+                <p class="text-sm font-medium text-slate-500">Apps</p>
+                <p class="mt-2 text-3xl font-semibold text-slate-950">2</p>
+                <p class="mt-2 text-sm leading-6 text-slate-600">Frontend and API examples wired into one task graph.</p>
+              </div>
+              <div class="glass-card p-5">
+                <p class="text-sm font-medium text-slate-500">Shared packages</p>
+                <p class="mt-2 text-3xl font-semibold text-slate-950">3</p>
+                <p class="mt-2 text-sm leading-6 text-slate-600">UI, types, and tsconfig presets ready to extend.</p>
+              </div>
+              <div class="glass-card p-5">
+                <p class="text-sm font-medium text-slate-500">Starter docs</p>
+                <p class="mt-2 text-3xl font-semibold text-slate-950">4</p>
+                <p class="mt-2 text-sm leading-6 text-slate-600">Guides for workspace usage, Turbo, and template customization.</p>
+              </div>
+            </div>
+          </div>
+
+          <aside class="glass-card relative overflow-hidden p-6 md:p-8">
+            <div class="absolute inset-x-6 top-6 h-px bg-gradient-to-r from-transparent via-cyan-300 to-transparent"></div>
+            <div class="space-y-6">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-semibold uppercase tracking-[0.28em] text-slate-400">
+                    Workspace topology
+                  </p>
+                  <h2 class="mt-2 text-2xl font-semibold text-slate-950">Apps and packages with clear boundaries</h2>
+                </div>
+                <div class="rounded-full bg-slate-950 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-white">
+                  turbo
+                </div>
+              </div>
+
+              <div class="grid gap-4">
+                <div class="rounded-[1.75rem] border border-cyan-200 bg-cyan-50/80 p-5">
+                  <p class="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-900">apps</p>
+                  <div class="mt-4 grid gap-3 md:grid-cols-2">
+                    <div class="rounded-[1.5rem] border border-white/70 bg-white/80 p-4">
+                      <p class="text-sm font-semibold text-slate-950">web</p>
+                      <p class="mt-1 text-sm leading-6 text-slate-600">Astro shell, React islands, starter showcase UI.</p>
+                    </div>
+                    <div class="rounded-[1.5rem] border border-white/70 bg-white/80 p-4">
+                      <p class="text-sm font-semibold text-slate-950">api</p>
+                      <p class="mt-1 text-sm leading-6 text-slate-600">NestJS app exposing typed procedures over tRPC.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-center">
+                  <div class="h-12 w-px bg-gradient-to-b from-cyan-300 via-slate-300 to-slate-300"></div>
+                </div>
+
+                <div class="rounded-[1.75rem] border border-slate-200 bg-slate-950 p-5 text-slate-100">
+                  <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">packages</p>
+                  <div class="mt-4 grid gap-3">
+                    <div class="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+                      <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-semibold text-white">ui</p>
+                        <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-300">shared components</span>
+                      </div>
+                    </div>
+                    <div class="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+                      <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-semibold text-white">types</p>
+                        <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-300">shared contracts</span>
+                      </div>
+                    </div>
+                    <div class="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+                      <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-semibold text-white">config-typescript</p>
+                        <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-300">shared config</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="workspace" class="mx-auto max-w-7xl px-6 py-6 md:px-10 md:py-10">
+        <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <span class="section-label">Included workspaces</span>
+            <h2 class="mt-4 text-3xl font-semibold text-slate-950 md:text-4xl">
+              A template that shows how the monorepo is meant to evolve
+            </h2>
+          </div>
+          <p class="max-w-xl text-sm leading-7 text-slate-600 md:text-base">
+            Each workspace exists to demonstrate a real boundary: apps stay runnable, packages stay reusable, and Turbo coordinates them from the root.
+          </p>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {workspaceCards.map((card) => (
+            <article class="glass-card p-6">
+              <div class="flex items-center justify-between gap-4">
+                <p class="text-lg font-semibold text-slate-950">{card.title}</p>
+                <span class="rounded-full bg-slate-950/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">
+                  {card.type}
+                </span>
+              </div>
+              <p class="mt-4 text-sm leading-7 text-slate-600">{card.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="workflow" class="mx-auto max-w-7xl px-6 py-6 md:px-10 md:py-10">
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div class="glass-card bg-slate-950 p-6 text-slate-100 md:p-8">
+            <span class="section-label border-white/10 bg-white/5 text-slate-300">Developer workflow</span>
+            <h2 class="mt-4 text-3xl font-semibold text-white md:text-4xl">
+              One root command to start the workspace, focused filters when you need them.
+            </h2>
+            <p class="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">
+              Use PNPM workspaces for local package links and shared versions, then let Turbo handle task orchestration across apps and packages.
+            </p>
+
+            <div class="mt-8 flex flex-wrap gap-3">
+              {commands.map((command) => (
+                <span class="command-pill">{command}</span>
+              ))}
+            </div>
+          </div>
+
+          <div class="glass-card p-6 md:p-8">
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">Why this setup works</p>
+            <ul class="mt-5 grid gap-4 text-sm leading-7 text-slate-600">
+              <li class="rounded-[1.5rem] border border-slate-200/80 bg-white/80 px-4 py-4">
+                `workspace:*` keeps package links explicit and predictable.
+              </li>
+              <li class="rounded-[1.5rem] border border-slate-200/80 bg-white/80 px-4 py-4">
+                `catalog:` centralizes shared dependency versions in one place.
+              </li>
+              <li class="rounded-[1.5rem] border border-slate-200/80 bg-white/80 px-4 py-4">
+                Turbo task dependencies keep the build graph aligned with package boundaries.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-7xl px-6 py-6 md:px-10 md:py-10">
+        <div class="mb-8">
+          <span class="section-label">Live sample surface</span>
+          <h2 class="mt-4 text-3xl font-semibold text-slate-950 md:text-4xl">
+            The starter demonstrates both SSR and hydrated client data out of the box.
+          </h2>
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-2">
+          <article class="glass-card p-6 md:p-8">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <p class="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">Server-rendered example</p>
+                <h3 class="mt-2 text-2xl font-semibold text-slate-950">SSR sample users</h3>
+              </div>
+              <span class="rounded-full bg-cyan-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-900">
+                tRPC on the server
+              </span>
+            </div>
+
+            <div class="mt-6 grid gap-3">
+              {users.length ? (
+                users.map((user) => (
+                  <div class="rounded-[1.5rem] border border-slate-200/80 bg-white/80 px-4 py-4 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">
+                    <p class="text-sm font-semibold text-slate-900">{user.name}</p>
+                    <p class="mt-1 text-sm text-slate-500">{user.email}</p>
+                  </div>
+                ))
+              ) : (
+                <div class="rounded-[1.5rem] border border-dashed border-slate-300 bg-white/70 px-4 py-5 text-sm text-slate-600">
+                  The page still renders when the API is offline, so static builds stay healthy.
+                </div>
+              )}
+            </div>
+          </article>
+
+          <article class="glass-card p-6 md:p-8">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <p class="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">React island example</p>
+                <h3 class="mt-2 text-2xl font-semibold text-slate-950">Hydrated client query</h3>
+              </div>
+              <span class="rounded-full bg-slate-950 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-white">
+                react-query
+              </span>
+            </div>
+
+            <div class="mt-6">
+              <UsersIsland client:load />
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-7xl px-6 py-6 pb-16 md:px-10 md:py-10 md:pb-24">
+        <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <span class="section-label">Starter guides</span>
+            <h2 class="mt-4 text-3xl font-semibold text-slate-950 md:text-4xl">
+              Docs that explain how to use the workspace, not just what is inside it.
+            </h2>
+          </div>
+          <p class="max-w-xl text-sm leading-7 text-slate-600 md:text-base">
+            Use the root README for onboarding, then move into focused guides for PNPM, TurboRepo, and template customization.
+          </p>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+          {guides.map((guide) => (
+            <article class="glass-card p-6">
+              <p class="font-mono text-sm text-cyan-950">{guide.path}</p>
+              <p class="mt-3 text-sm leading-7 text-slate-600">{guide.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "extends": "@workspace-starter/config-typescript/astro.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "declaration": false,
+    "declarationMap": false,
+    "paths": {
+      "@workspace-starter/types": ["../../packages/types/src/index.ts"],
+      "@workspace-starter/ui": ["../../packages/ui/src/index.ts"],
+      "@workspace-starter/api": ["../../apps/api/src/index.ts"]
+    }
+  },
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist", "node_modules"]
+}

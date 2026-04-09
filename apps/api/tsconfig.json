@@ -1,0 +1,14 @@
+{
+  "extends": "@workspace-starter/config-typescript/nestjs.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "declaration": false,
+    "declarationMap": false,
+    "baseUrl": "./",
+    "paths": {
+      "@workspace-starter/types": ["../../packages/types/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "test"]
+}

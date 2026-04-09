@@ -1,0 +1,29 @@
+{
+  "name": "pnpm-turbo-workspace-starter",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "clean": "turbo clean",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo build && changeset publish"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.1",
+    "@changesets/cli": "^2.27.0",
+    "@typescript-eslint/eslint-plugin": "catalog:dev-tools",
+    "@typescript-eslint/parser": "catalog:dev-tools",
+    "eslint": "catalog:dev-tools",
+    "globals": "^16.0.0",
+    "turbo": "^2.3.0"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.12.0"
+}

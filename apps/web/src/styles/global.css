@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap');
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --starter-ink: #0f172a;
+  --starter-muted: #526079;
+  --starter-surface: rgba(255, 255, 255, 0.78);
+  --starter-border: rgba(148, 163, 184, 0.24);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 30%),
+      radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 24%),
+      linear-gradient(180deg, #f8fafc 0%, #eef2ff 42%, #f8fafc 100%);
+    color: var(--starter-ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: 'Sora', sans-serif;
+    letter-spacing: -0.04em;
+  }
+
+  * {
+    border-color: var(--starter-border);
+  }
+}
+
+@layer components {
+  .starter-shell {
+    @apply relative isolate overflow-hidden;
+  }
+
+  .starter-shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: linear-gradient(180deg, black 40%, transparent 100%);
+    pointer-events: none;
+    z-index: -2;
+  }
+
+  .starter-shell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.25), rgba(248, 250, 252, 0.9));
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .glass-card {
+    @apply rounded-[2rem] border border-white/60 bg-white/75 backdrop-blur-xl shadow-[0_24px_80px_rgba(15,23,42,0.08)];
+  }
+
+  .section-label {
+    @apply inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500;
+  }
+
+  .command-pill {
+    @apply inline-flex items-center rounded-full border border-white/15 bg-slate-950 px-4 py-2 font-mono text-xs text-slate-100 shadow-[0_16px_40px_rgba(15,23,42,0.24)];
+  }
+}
