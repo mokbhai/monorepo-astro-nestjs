@@ -19,6 +19,7 @@ packages/
 ```bash
 pnpm install
 pnpm dev
+pnpm start
 ```
 
 The default local ports are:
@@ -30,6 +31,7 @@ The default local ports are:
 
 ```bash
 pnpm dev
+pnpm start
 pnpm build
 pnpm typecheck
 pnpm test
@@ -54,7 +56,8 @@ pnpm --filter @workspace-starter/ui build
 ## Starter Workflow
 
 1. Install dependencies with `pnpm install`.
-2. Run the workspace with `pnpm dev`.
-3. Explore the sample app and shared packages.
-4. Rename the scope and packages for your own project.
-5. Add new apps or packages as the monorepo grows.
+2. Run the workspace with `pnpm dev` for local development.
+3. Run `pnpm start` to build and launch the production web and API servers together.
+4. Explore the sample app and shared packages.
+5. Rename the scope and packages for your own project.
+6. Add new apps or packages as the monorepo grows.

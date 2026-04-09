@@ -3,10 +3,11 @@
   "private": true,
   "scripts": {
     "dev": "turbo dev",
+    "start": "pnpm build && pnpm -r --parallel --filter @workspace-starter/web --filter @workspace-starter/api start",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "test": "turbo test",
+    "test": "node --test tests/root-start-scripts.test.mjs && turbo test",
     "clean": "turbo clean",
     "changeset": "changeset",
     "version-packages": "changeset version",

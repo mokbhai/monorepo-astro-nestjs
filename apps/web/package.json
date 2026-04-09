@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "astro dev --host 127.0.0.1",
     "build": "astro build",
+    "start": "astro preview --host 127.0.0.1",
     "preview": "astro preview",
     "typecheck": "astro check",
     "lint": "eslint \"src/**/*.{ts,tsx}\""
