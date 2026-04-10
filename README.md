@@ -22,6 +22,22 @@ pnpm dev
 pnpm start
 ```
 
+## One-Command Bootstrap
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mokbhai/JP/main/scripts/bootstrap.sh | bash -s -- my-app
+```
+
+The bootstrap flow:
+
+- clones this starter into a fresh directory
+- launches an interactive TUI installer
+- renames the root package
+- runs `pnpm install`
+- removes the starter git history
+- initializes a fresh git repository
+- creates the first commit automatically
+
 The default local ports are:
 
 - Web: `http://127.0.0.1:4321`
@@ -32,6 +48,7 @@ The default local ports are:
 ```bash
 pnpm dev
 pnpm start
+pnpm setup:starter
 pnpm build
 pnpm typecheck
 pnpm test

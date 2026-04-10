@@ -4,10 +4,11 @@
   "scripts": {
     "dev": "turbo dev",
     "start": "pnpm build && pnpm -r --parallel --filter @workspace-starter/web --filter @workspace-starter/api start",
+    "setup:starter": "node scripts/setup-starter.mjs",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "test": "node --test tests/root-start-scripts.test.mjs && turbo test",
+    "test": "node --test tests/root-start-scripts.test.mjs tests/setup-starter.test.mjs && turbo test",
     "clean": "turbo clean",
     "changeset": "changeset",
     "version-packages": "changeset version",
