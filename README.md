@@ -35,6 +35,7 @@ The bootstrap flow:
 - renames the root package
 - runs `pnpm install`
 - removes the starter git history
+- removes the bootstrap installer files before commit
 - initializes a fresh git repository
 - creates the first commit automatically
 

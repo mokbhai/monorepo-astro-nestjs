@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
@@ -8,6 +8,13 @@ import { pathToFileURL } from 'node:url';
 async function loadSetupHelpers() {
   const moduleUrl = pathToFileURL(
     path.join(process.cwd(), 'scripts/lib/customize-root-package.mjs'),
+  );
+  return import(moduleUrl.href);
+}
+
+async function loadCleanupHelpers() {
+  const moduleUrl = pathToFileURL(
+    path.join(process.cwd(), 'scripts/lib/remove-installer-artifacts.mjs'),
   );
   return import(moduleUrl.href);
 }
@@ -52,4 +59,35 @@ test('validatePackageName rejects invalid npm package names', async () => {
   assert.equal(validatePackageName('valid-name').valid, true);
   assert.equal(validatePackageName('Invalid Name').valid, false);
   assert.equal(validatePackageName('@bad/scope').valid, false);
+});
+
+test('removeInstallerArtifacts deletes only installer files before commit', async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'starter-cleanup-'));
+
+  try {
+    await mkdir(path.join(tempDir, 'scripts', 'lib'), { recursive: true });
+    await writeFile(path.join(tempDir, 'package.json'), '{}\n');
+    await writeFile(path.join(tempDir, 'README.md'), '# demo\n');
+    await writeFile(path.join(tempDir, 'scripts', 'keep.mjs'), 'export {};\n');
+    await writeFile(path.join(tempDir, 'scripts', 'bootstrap.sh'), '#!/usr/bin/env bash\n');
+    await writeFile(path.join(tempDir, 'scripts', 'setup-starter.mjs'), 'export {};\n');
+    await writeFile(
+      path.join(tempDir, 'scripts', 'lib', 'customize-root-package.mjs'),
+      'export {};\n',
+    );
+
+    const { removeInstallerArtifacts } = await loadCleanupHelpers();
+    await removeInstallerArtifacts({ repoDir: tempDir });
+
+    const { access } = await import('node:fs/promises');
+
+    await access(path.join(tempDir, 'scripts', 'keep.mjs'));
+    await assert.rejects(access(path.join(tempDir, 'scripts', 'bootstrap.sh')));
+    await assert.rejects(access(path.join(tempDir, 'scripts', 'setup-starter.mjs')));
+    await assert.rejects(
+      access(path.join(tempDir, 'scripts', 'lib', 'customize-root-package.mjs')),
+    );
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });

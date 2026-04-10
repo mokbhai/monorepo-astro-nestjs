@@ -8,6 +8,7 @@ import {
   customizeRootPackageName,
   validatePackageName,
 } from './lib/customize-root-package.mjs';
+import { removeInstallerArtifacts } from './lib/remove-installer-artifacts.mjs';
 import { captureCommand, runCommand } from './lib/run-command.mjs';
 import {
   createPrompter,
@@ -139,6 +140,11 @@ async function main() {
             cwd: repoDir,
           });
         },
+      },
+      {
+        label: 'Remove installer files',
+        status: 'pending',
+        run: async () => removeInstallerArtifacts({ repoDir }),
       },
       {
         label: 'Create initial commit',
