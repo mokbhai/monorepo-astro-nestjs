@@ -69,8 +69,14 @@ test('removeInstallerArtifacts deletes only installer files before commit', asyn
     await writeFile(path.join(tempDir, 'package.json'), '{}\n');
     await writeFile(path.join(tempDir, 'README.md'), '# demo\n');
     await writeFile(path.join(tempDir, 'scripts', 'keep.mjs'), 'export {};\n');
-    await writeFile(path.join(tempDir, 'scripts', 'bootstrap.sh'), '#!/usr/bin/env bash\n');
-    await writeFile(path.join(tempDir, 'scripts', 'setup-starter.mjs'), 'export {};\n');
+    await writeFile(
+      path.join(tempDir, 'scripts', 'bootstrap.sh'),
+      '#!/usr/bin/env bash\n',
+    );
+    await writeFile(
+      path.join(tempDir, 'scripts', 'setup-starter.mjs'),
+      'export {};\n',
+    );
     await writeFile(
       path.join(tempDir, 'scripts', 'lib', 'customize-root-package.mjs'),
       'export {};\n',
@@ -83,9 +89,13 @@ test('removeInstallerArtifacts deletes only installer files before commit', asyn
 
     await access(path.join(tempDir, 'scripts', 'keep.mjs'));
     await assert.rejects(access(path.join(tempDir, 'scripts', 'bootstrap.sh')));
-    await assert.rejects(access(path.join(tempDir, 'scripts', 'setup-starter.mjs')));
     await assert.rejects(
-      access(path.join(tempDir, 'scripts', 'lib', 'customize-root-package.mjs')),
+      access(path.join(tempDir, 'scripts', 'setup-starter.mjs')),
+    );
+    await assert.rejects(
+      access(
+        path.join(tempDir, 'scripts', 'lib', 'customize-root-package.mjs'),
+      ),
     );
   } finally {
     await rm(tempDir, { recursive: true, force: true });

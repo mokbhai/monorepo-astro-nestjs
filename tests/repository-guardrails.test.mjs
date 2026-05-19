@@ -27,16 +27,27 @@ test('root exposes repository guardrail scripts with pinned tooling', async () =
   const pkg = await readJson('package.json');
 
   assert.equal(pkg.packageManager, 'pnpm@11.1.3');
-  assert.equal(pkg.engines?.node, '>=22.12.0');
+  assert.equal(pkg.engines?.node, '>=22.13.0');
   assert.equal(pkg.engines?.pnpm, '>=11.1.3 <12');
+  assert.equal(pkg.devDependencies?.prettier, 'catalog:dev-tools');
+  assert.equal(
+    pkg.devDependencies?.['prettier-plugin-astro'],
+    'catalog:dev-tools',
+  );
 
   assert.match(pkg.scripts?.['verify:fast'] ?? '', /pnpm lint/);
+  assert.match(pkg.scripts?.['verify:fast'] ?? '', /pnpm format:check/);
   assert.match(pkg.scripts?.['verify:fast'] ?? '', /pnpm typecheck/);
   assert.match(pkg.scripts?.['verify:fast'] ?? '', /git diff --check/);
+  assert.match(pkg.scripts?.format ?? '', /prettier --write/);
+  assert.match(pkg.scripts?.['format:check'] ?? '', /prettier --check/);
   assert.match(pkg.scripts?.verify ?? '', /pnpm verify:fast/);
   assert.match(pkg.scripts?.verify ?? '', /pnpm build/);
   assert.match(pkg.scripts?.verify ?? '', /pnpm test/);
-  assert.match(pkg.scripts?.['hooks:install'] ?? '', /core\.hooksPath .githooks/);
+  assert.match(
+    pkg.scripts?.['hooks:install'] ?? '',
+    /core\.hooksPath .githooks/,
+  );
 });
 
 test('local Git hooks call the repository verification scripts', async () => {
@@ -49,15 +60,24 @@ test('local Git hooks call the repository verification scripts', async () => {
 
   assert.match(preCommit, /pnpm verify:fast/);
   assert.match(prePush, /pnpm verify/);
-  assert.notEqual(preCommitStat.mode & 0o111, 0, 'pre-commit should be executable');
+  assert.notEqual(
+    preCommitStat.mode & 0o111,
+    0,
+    'pre-commit should be executable',
+  );
   assert.notEqual(prePushStat.mode & 0o111, 0, 'pre-push should be executable');
 });
 
 test('GitHub CI runs the same repository verification command', async () => {
   const workflow = await readText('.github/workflows/ci.yml');
-  const corepackInstallIndex = workflow.indexOf('npm install --global corepack@0.34.2');
-  const pnpmPrepareIndex = workflow.indexOf('corepack prepare pnpm@11.1.3 --activate');
+  const corepackInstallIndex = workflow.indexOf(
+    'npm install --global corepack@0.34.2',
+  );
+  const pnpmPrepareIndex = workflow.indexOf(
+    'corepack prepare pnpm@11.1.3 --activate',
+  );
 
+  assert.match(workflow, /node-version: 22\.13\.0/);
   assert.notEqual(corepackInstallIndex, -1);
   assert.notEqual(pnpmPrepareIndex, -1);
   assert.ok(
@@ -96,8 +116,14 @@ test('workspace package manifests keep shared graph invariants', async () => {
       );
     }
 
-    for (const field of ['dependencies', 'devDependencies', 'optionalDependencies']) {
-      for (const [dependencyName, version] of Object.entries(pkg[field] ?? {})) {
+    for (const field of [
+      'dependencies',
+      'devDependencies',
+      'optionalDependencies',
+    ]) {
+      for (const [dependencyName, version] of Object.entries(
+        pkg[field] ?? {},
+      )) {
         if (workspaceNames.has(dependencyName)) {
           assert.equal(
             version,

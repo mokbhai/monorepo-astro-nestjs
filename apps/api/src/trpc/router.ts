@@ -4,9 +4,7 @@ import { router, publicProcedure, protectedProcedure } from './trpc';
 const usersRouter = router({
   list: publicProcedure.query(async () => {
     // TODO: replace with real DB call
-    return [
-      { id: '1', name: 'Mokshit Jain', email: 'm@example.com' },
-    ];
+    return [{ id: '1', name: 'Mokshit Jain', email: 'm@example.com' }];
   }),
 
   getById: publicProcedure
@@ -21,7 +19,7 @@ const usersRouter = router({
       z.object({
         name: z.string().min(1),
         email: z.string().email(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       // TODO: replace with real DB call

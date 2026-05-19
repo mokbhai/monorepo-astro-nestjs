@@ -1,12 +1,7 @@
 import { spawn } from 'node:child_process';
 
 export function runCommand(command, args = [], options = {}) {
-  const {
-    cwd,
-    env,
-    stdio = 'inherit',
-    allowFailure = false,
-  } = options;
+  const { cwd, env, stdio = 'inherit', allowFailure = false } = options;
 
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {

@@ -23,7 +23,9 @@ export function createPrompter() {
 
 export async function promptText(prompter, label, defaultValue = '') {
   const suffix = defaultValue ? ` ${colorize('dim', `(${defaultValue})`)}` : '';
-  const answer = await prompter.question(`${colorize('cyan', '?')} ${label}${suffix}: `);
+  const answer = await prompter.question(
+    `${colorize('cyan', '?')} ${label}${suffix}: `,
+  );
   return answer.trim() || defaultValue;
 }
 

@@ -11,7 +11,8 @@ const buttonVariants = cva(
           'border-slate-950 bg-slate-950 text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] hover:-translate-y-0.5 hover:bg-slate-800',
         outline:
           'border-slate-300 bg-white/80 text-slate-900 backdrop-blur hover:-translate-y-0.5 hover:border-slate-400 hover:bg-white',
-        ghost: 'border-transparent bg-transparent text-slate-700 hover:bg-slate-950/5',
+        ghost:
+          'border-transparent bg-transparent text-slate-700 hover:bg-slate-950/5',
         destructive:
           'border-rose-600 bg-rose-600 text-white shadow-[0_16px_40px_rgba(225,29,72,0.18)] hover:-translate-y-0.5 hover:bg-rose-500',
       },
@@ -26,11 +27,12 @@ const buttonVariants = cva(
       variant: 'default',
       size: 'md',
     },
-  }
+  },
 );
 
 export interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
+  extends
+    ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {}
 
 export function Button({ className, variant, size, ...props }: ButtonProps) {

@@ -77,14 +77,29 @@ export function UserList({
           ].join(' ')}
         >
           <div>
-            <p className={['text-sm font-semibold', variant === 'dark' ? 'text-white' : 'text-slate-900'].join(' ')}>
+            <p
+              className={[
+                'text-sm font-semibold',
+                variant === 'dark' ? 'text-white' : 'text-slate-900',
+              ].join(' ')}
+            >
               {user.name}
             </p>
-            <p className={['truncate text-sm', variant === 'dark' ? 'text-white/58' : 'text-slate-500'].join(' ')}>
+            <p
+              className={[
+                'truncate text-sm',
+                variant === 'dark' ? 'text-white/58' : 'text-slate-500',
+              ].join(' ')}
+            >
               {user.email}
             </p>
           </div>
-          <span className={['text-[10px] font-semibold uppercase tracking-[0.24em]', variant === 'dark' ? 'text-white/34' : 'text-slate-400'].join(' ')}>
+          <span
+            className={[
+              'text-[10px] font-semibold uppercase tracking-[0.24em]',
+              variant === 'dark' ? 'text-white/34' : 'text-slate-400',
+            ].join(' ')}
+          >
             {messages.badge}
           </span>
         </li>

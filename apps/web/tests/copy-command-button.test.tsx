@@ -26,7 +26,7 @@ describe('CopyCommandButton', () => {
         command="pnpm install"
         idleLabel="Copy command"
         doneLabel="Copied"
-      />
+      />,
     );
 
     const button = screen.getByRole('button', { name: 'Copy command' });
@@ -54,7 +54,7 @@ describe('CopyCommandButton', () => {
         command="pnpm install"
         idleLabel="Copy command"
         doneLabel="Copied"
-      />
+      />,
     );
 
     const button = screen.getByRole('button', { name: 'Copy command' });

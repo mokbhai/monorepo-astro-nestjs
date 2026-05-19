@@ -52,6 +52,8 @@ pnpm dev
 pnpm start
 pnpm setup:starter
 pnpm build
+pnpm format
+pnpm format:check
 pnpm typecheck
 pnpm test
 pnpm verify:fast
@@ -67,7 +69,7 @@ pnpm --filter @workspace-starter/i18n test
 
 Run `pnpm hooks:install` once per checkout to point Git at the repository hooks in `.githooks`.
 
-- `pre-commit` runs `pnpm verify:fast`, which checks lint, types, and whitespace errors.
+- `pre-commit` runs `pnpm verify:fast`, which checks lint, formatting, types, and whitespace errors.
 - `pre-push` runs `pnpm verify`, which adds the full build and test suite.
 - GitHub Actions runs `pnpm verify` on pull requests and pushes to `main`.
 

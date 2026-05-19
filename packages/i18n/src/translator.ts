@@ -19,7 +19,8 @@ export function createTranslator(
 ): Translator {
   return (key, values) => {
     const message =
-      getCatalogString(messages, key) ?? getCatalogString(fallbackMessages, key);
+      getCatalogString(messages, key) ??
+      getCatalogString(fallbackMessages, key);
 
     return message === undefined ? key : interpolate(message, values);
   };

@@ -53,7 +53,9 @@ async function resolveGitIdentity(repoDir, prompter) {
   }
 
   if (!gitName || !gitEmail) {
-    throw new Error('Git user name and email are required to create the first commit.');
+    throw new Error(
+      'Git user name and email are required to create the first commit.',
+    );
   }
 
   return { gitName, gitEmail };
@@ -64,7 +66,9 @@ async function main() {
   const rootPackageJsonPath = path.join(repoDir, 'package.json');
 
   if (!(await pathExists(rootPackageJsonPath))) {
-    throw new Error('Run this installer from the root of the cloned starter repository.');
+    throw new Error(
+      'Run this installer from the root of the cloned starter repository.',
+    );
   }
 
   const prompter = createPrompter();
@@ -125,7 +129,8 @@ async function main() {
       {
         label: 'Remove starter git history',
         status: 'pending',
-        run: async () => rm(path.join(repoDir, '.git'), { recursive: true, force: true }),
+        run: async () =>
+          rm(path.join(repoDir, '.git'), { recursive: true, force: true }),
       },
       {
         label: 'Initialize fresh git repository',
@@ -133,12 +138,20 @@ async function main() {
         run: async () => {
           await runCommand('git', ['init'], { cwd: repoDir });
           await runCommand('git', ['branch', '-M', 'main'], { cwd: repoDir });
-          await runCommand('git', ['config', 'user.name', gitIdentity.gitName], {
-            cwd: repoDir,
-          });
-          await runCommand('git', ['config', 'user.email', gitIdentity.gitEmail], {
-            cwd: repoDir,
-          });
+          await runCommand(
+            'git',
+            ['config', 'user.name', gitIdentity.gitName],
+            {
+              cwd: repoDir,
+            },
+          );
+          await runCommand(
+            'git',
+            ['config', 'user.email', gitIdentity.gitEmail],
+            {
+              cwd: repoDir,
+            },
+          );
         },
       },
       {

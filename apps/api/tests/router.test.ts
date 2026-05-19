@@ -33,7 +33,7 @@ describe('appRouter users procedures', () => {
     const caller = appRouter.createCaller(createTestContext());
 
     await expect(
-      caller.users.create({ name: 'Ada Lovelace', email: 'ada@example.com' })
+      caller.users.create({ name: 'Ada Lovelace', email: 'ada@example.com' }),
     ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
   });
 });

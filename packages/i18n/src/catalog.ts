@@ -63,7 +63,10 @@ function compareCatalogs({
       continue;
     }
 
-    if (typeof referenceValue === 'string' && typeof candidateValue === 'string') {
+    if (
+      typeof referenceValue === 'string' &&
+      typeof candidateValue === 'string'
+    ) {
       if (options.requireNonEmptyStrings && candidateValue.trim() === '') {
         issues.push({ path, type: 'empty' });
       }
@@ -102,7 +105,9 @@ export function listCatalogKeys(catalog: MessageCatalog): string[] {
       continue;
     }
 
-    keys.push(...listCatalogKeys(value).map((childKey) => `${key}.${childKey}`));
+    keys.push(
+      ...listCatalogKeys(value).map((childKey) => `${key}.${childKey}`),
+    );
   }
 
   return keys;

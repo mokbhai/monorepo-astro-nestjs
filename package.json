@@ -7,9 +7,11 @@
     "setup:starter": "node scripts/setup-starter.mjs",
     "build": "turbo build",
     "lint": "turbo lint",
+    "format": "prettier --write . --ignore-unknown",
+    "format:check": "prettier --check . --ignore-unknown",
     "typecheck": "turbo typecheck",
     "test": "node --test tests/root-start-scripts.test.mjs tests/setup-starter.test.mjs tests/repository-guardrails.test.mjs && turbo test",
-    "verify:fast": "pnpm lint && pnpm typecheck && git diff --check && git diff --cached --check",
+    "verify:fast": "pnpm lint && pnpm format:check && pnpm typecheck && git diff --check && git diff --cached --check",
     "verify": "pnpm verify:fast && pnpm build && pnpm test",
     "hooks:install": "git config core.hooksPath .githooks",
     "clean": "turbo clean",
@@ -24,10 +26,12 @@
     "@typescript-eslint/parser": "catalog:dev-tools",
     "eslint": "catalog:dev-tools",
     "globals": "^17.6.0",
+    "prettier": "catalog:dev-tools",
+    "prettier-plugin-astro": "catalog:dev-tools",
     "turbo": "^2.9.14"
   },
   "engines": {
-    "node": ">=22.12.0",
+    "node": ">=22.13.0",
     "pnpm": ">=11.1.3 <12"
   },
   "packageManager": "pnpm@11.1.3"

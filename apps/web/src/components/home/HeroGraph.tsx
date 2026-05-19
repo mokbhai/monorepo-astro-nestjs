@@ -44,7 +44,9 @@ export function HeroGraph() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const prefersReducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
     const nodes = BASE_NODES.map((node, index) => ({
       ...node,
       ph: index * 0.9,
@@ -120,8 +122,13 @@ export function HeroGraph() {
 
       nodes.forEach((node) => {
         if (node.bx == null || node.by == null || node.ph == null) return;
-        const floatX = prefersReducedMotion ? 0 : Math.sin(t + node.ph) * 5 + Math.cos(t * 0.55 + node.ph * 1.6) * 3;
-        const floatY = prefersReducedMotion ? 0 : Math.cos(t * 0.6 + node.ph) * 5 + Math.sin(t * 0.45 + node.ph * 1.2) * 3;
+        const floatX = prefersReducedMotion
+          ? 0
+          : Math.sin(t + node.ph) * 5 + Math.cos(t * 0.55 + node.ph * 1.6) * 3;
+        const floatY = prefersReducedMotion
+          ? 0
+          : Math.cos(t * 0.6 + node.ph) * 5 +
+            Math.sin(t * 0.45 + node.ph * 1.2) * 3;
 
         node.x = node.bx + floatX;
         node.y = node.by + floatY + entryOffset;
@@ -141,7 +148,8 @@ export function HeroGraph() {
       EDGES.forEach(([a, b]) => {
         const na = nodes[a]!;
         const nb = nodes[b]!;
-        if (na.x == null || na.y == null || nb.x == null || nb.y == null) return;
+        if (na.x == null || na.y == null || nb.x == null || nb.y == null)
+          return;
 
         const mx = (na.x + nb.x) / 2 + (nb.y - na.y) * 0.1;
         const my = (na.y + nb.y) / 2 - (nb.x - na.x) * 0.1;
@@ -168,7 +176,14 @@ export function HeroGraph() {
       nodes.forEach((node) => {
         if (node.x == null || node.y == null) return;
 
-        const glow = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, node.r * 3);
+        const glow = ctx.createRadialGradient(
+          node.x,
+          node.y,
+          0,
+          node.x,
+          node.y,
+          node.r * 3,
+        );
         glow.addColorStop(0, `${node.color}09`);
         glow.addColorStop(1, `${node.color}00`);
 
@@ -196,7 +211,14 @@ export function HeroGraph() {
         ctx.fillText(node.label, node.x, node.y + node.r + 18);
       });
 
-      const fog = ctx.createRadialGradient(width / 2, height * 0.46, 0, width / 2, height * 0.46, Math.max(width, height) * 0.45);
+      const fog = ctx.createRadialGradient(
+        width / 2,
+        height * 0.46,
+        0,
+        width / 2,
+        height * 0.46,
+        Math.max(width, height) * 0.45,
+      );
       fog.addColorStop(0, 'rgba(255,255,255,0)');
       fog.addColorStop(1, 'rgba(248,245,240,0.65)');
 

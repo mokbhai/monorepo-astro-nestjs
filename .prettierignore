@@ -1,0 +1,8 @@
+node_modules
+.agents
+dist
+.astro
+.turbo
+.vite
+coverage
+pnpm-lock.yaml

@@ -22,7 +22,10 @@ test('every configured web locale has the expected namespace files', async () =>
 
   for (const locale of supportedLocales) {
     const files = await readdir(path.join(localesDir, locale));
-    assert.deepEqual(files.sort(), namespaces.map((namespace) => `${namespace}.json`));
+    assert.deepEqual(
+      files.sort(),
+      namespaces.map((namespace) => `${namespace}.json`),
+    );
   }
 });
 
@@ -30,7 +33,9 @@ test('translated web catalogs match the default locale shape', async () => {
   for (const namespace of namespaces) {
     const reference = await readCatalog(defaultLocale, namespace);
 
-    for (const locale of supportedLocales.filter((item) => item !== defaultLocale)) {
+    for (const locale of supportedLocales.filter(
+      (item) => item !== defaultLocale,
+    )) {
       const candidate = await readCatalog(locale, namespace);
       assert.deepEqual(validateCatalogShape(reference, candidate), []);
     }
