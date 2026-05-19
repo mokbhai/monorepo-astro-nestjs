@@ -55,8 +55,15 @@ test('local Git hooks call the repository verification scripts', async () => {
 
 test('GitHub CI runs the same repository verification command', async () => {
   const workflow = await readText('.github/workflows/ci.yml');
+  const corepackInstallIndex = workflow.indexOf('npm install --global corepack@0.34.2');
+  const pnpmPrepareIndex = workflow.indexOf('corepack prepare pnpm@11.1.3 --activate');
 
-  assert.match(workflow, /pnpm@11\.1\.3/);
+  assert.notEqual(corepackInstallIndex, -1);
+  assert.notEqual(pnpmPrepareIndex, -1);
+  assert.ok(
+    corepackInstallIndex < pnpmPrepareIndex,
+    'GitHub CI should update Corepack before preparing pinned pnpm',
+  );
   assert.match(workflow, /pnpm install --frozen-lockfile/);
   assert.match(workflow, /pnpm verify/);
 });

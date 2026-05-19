@@ -28,6 +28,9 @@ jobs:
         with:
           node-version: 22.12.0
 
+      - name: Install compatible Corepack
+        run: npm install --global corepack@0.34.2
+
       - name: Enable Corepack
         run: corepack enable
 
