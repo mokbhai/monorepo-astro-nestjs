@@ -1,4 +1,5 @@
 import { defineConfig } from 'astro/config';
+import node from '@astrojs/node';
 import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -8,6 +9,9 @@ const i18nLocales = [...locales];
 
 export default defineConfig({
   output: 'static',
+  adapter: node({
+    mode: 'standalone',
+  }),
 
   i18n: {
     locales: i18nLocales,

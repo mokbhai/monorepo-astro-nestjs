@@ -8,7 +8,10 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "test": "node --test tests/root-start-scripts.test.mjs tests/setup-starter.test.mjs && turbo test",
+    "test": "node --test tests/root-start-scripts.test.mjs tests/setup-starter.test.mjs tests/repository-guardrails.test.mjs && turbo test",
+    "verify:fast": "pnpm lint && pnpm typecheck && git diff --check && git diff --cached --check",
+    "verify": "pnpm verify:fast && pnpm build && pnpm test",
+    "hooks:install": "git config core.hooksPath .githooks",
     "clean": "turbo clean",
     "changeset": "changeset",
     "version-packages": "changeset version",
@@ -25,7 +28,7 @@
   },
   "engines": {
     "node": ">=22.12.0",
-    "pnpm": ">=10"
+    "pnpm": ">=11.1.3 <12"
   },
   "packageManager": "pnpm@11.1.3"
 }

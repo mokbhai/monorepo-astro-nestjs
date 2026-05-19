@@ -61,6 +61,8 @@ Write the summary for a package consumer or release-note reader:
 
 Before saying work is complete:
 
+- Use `pnpm verify:fast` for the standard local pre-commit gate.
+- Use `pnpm verify` for guardrail, root-script, CI, Git hook, workspace-manifest, Turbo, package-export, or shared-contract changes when feasible.
 - Run the narrowest reliable validation required by `AGENTS.md`: usually `pnpm lint`, `pnpm typecheck`, and targeted tests; use full `pnpm test` for scripts, build behavior, or shared contracts.
 - Run `git diff --check` when touching markdown, package manifests, or generated release notes.
 - Re-run `git status --short` and include changed files, validation, skipped checks, and changeset status in the final handoff.

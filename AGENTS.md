@@ -43,6 +43,8 @@ Root tests use `node:test` with `node:assert/strict`; add repository behavior te
 
 Before marking work complete, run the narrowest reliable validation. For most code changes, run `pnpm lint`, `pnpm typecheck`, and the most relevant targeted tests. Run full `pnpm test` for script, build, workspace wiring, or shared-contract changes, or when targeted tests do not cover the risk. Update tests, docs, and examples when behavior changes. Final handoff should name changed files, validation performed, and skipped checks with reasons.
 
+Use `pnpm verify:fast` for the standard pre-commit gate and `pnpm verify` for the full repository gate. Prefer `pnpm verify` before handoff when changing root scripts, CI, Git hooks, workspace manifests, Turbo wiring, package exports, or shared contracts.
+
 ## Commit & Pull Request Guidelines
 
 Use short, imperative, sentence-case commit subjects, e.g. `Add production start command and localize user list UI`. PRs should include a summary, validation, linked issues, and screenshots for visible UI changes.

@@ -54,11 +54,22 @@ pnpm setup:starter
 pnpm build
 pnpm typecheck
 pnpm test
+pnpm verify:fast
+pnpm verify
+pnpm hooks:install
 pnpm --filter @workspace-starter/web dev
 pnpm --filter @workspace-starter/api dev
 pnpm --filter @workspace-starter/ui build
 pnpm --filter @workspace-starter/i18n test
 ```
+
+## Quality Gates
+
+Run `pnpm hooks:install` once per checkout to point Git at the repository hooks in `.githooks`.
+
+- `pre-commit` runs `pnpm verify:fast`, which checks lint, types, and whitespace errors.
+- `pre-push` runs `pnpm verify`, which adds the full build and test suite.
+- GitHub Actions runs `pnpm verify` on pull requests and pushes to `main`.
 
 ## Why This Starter
 
