@@ -15,10 +15,10 @@
     }
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.19",
+    "@nestjs/common": "^11.1.21",
     "@nestjs/config": "^4.0.4",
-    "@nestjs/core": "^11.1.19",
-    "@nestjs/platform-fastify": "^11.1.19",
+    "@nestjs/core": "^11.1.21",
+    "@nestjs/platform-fastify": "^11.1.21",
     "@trpc/server": "catalog:",
     "@workspace-starter/types": "workspace:*",
     "reflect-metadata": "^0.2.2",
@@ -28,7 +28,7 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.21",
     "@nestjs/schematics": "^11.1.0",
-    "@types/node": "^25.6.0",
+    "@types/node": "^25.9.0",
     "@workspace-starter/config-typescript": "workspace:*",
     "eslint": "catalog:dev-tools",
     "typescript": "catalog:"

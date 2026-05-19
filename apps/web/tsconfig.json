@@ -1,7 +1,6 @@
 {
   "extends": "@workspace-starter/config-typescript/astro.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "declaration": false,
     "declarationMap": false,
     "paths": {
