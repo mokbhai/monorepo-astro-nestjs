@@ -9,12 +9,14 @@
     "start": "astro preview --host 127.0.0.1",
     "preview": "astro preview",
     "typecheck": "astro check",
-    "lint": "eslint \"src/**/*.{ts,tsx}\""
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "test": "pnpm --filter @workspace-starter/i18n build && node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.11",
     "@trpc/client": "catalog:",
     "@trpc/react-query": "catalog:",
+    "@workspace-starter/i18n": "workspace:*",
     "@workspace-starter/types": "workspace:*",
     "@workspace-starter/ui": "workspace:*",
     "astro": "^6.3.5",

@@ -25,7 +25,7 @@ This starter uses the scope `@workspace-starter/*`. Replace it with your own org
 
 ## Environment Variables
 
-Use [.env.example](/Users/mokshitjain/Codes/Company/JainParichay/Core/.env.example) as the template source for local environment setup.
+Use [.env.example](../../.env.example) as the template source for local environment setup.
 
 ## Replace The Showcase UI
 

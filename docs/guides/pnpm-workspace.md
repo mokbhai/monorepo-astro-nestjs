@@ -9,7 +9,7 @@ PNPM workspaces let the repository manage multiple apps and packages from one lo
 - `apps/*` contains runnable applications.
 - `packages/*` contains reusable libraries and shared configuration.
 
-The workspace is defined in [pnpm-workspace.yaml](/Users/mokshitjain/Codes/Company/JainParichay/Core/pnpm-workspace.yaml).
+The workspace is defined in [pnpm-workspace.yaml](../../pnpm-workspace.yaml).
 
 ## Useful Commands
 
@@ -19,6 +19,7 @@ pnpm --filter @workspace-starter/web dev
 pnpm --filter @workspace-starter/api dev
 pnpm --filter @workspace-starter/ui build
 pnpm --filter @workspace-starter/types typecheck
+pnpm --filter @workspace-starter/i18n test
 ```
 
 ## Workspace Dependencies
@@ -28,6 +29,7 @@ Use `workspace:*` for internal packages:
 ```json
 {
   "dependencies": {
+    "@workspace-starter/i18n": "workspace:*",
     "@workspace-starter/ui": "workspace:*"
   }
 }
@@ -37,7 +39,7 @@ That keeps local package resolution explicit and makes refactors easier across t
 
 ## Catalogs
 
-This starter uses PNPM catalogs in [pnpm-workspace.yaml](/Users/mokshitjain/Codes/Company/JainParichay/Core/pnpm-workspace.yaml) for common dependency versions. Use `catalog:` when multiple workspaces should share the same version of a dependency.
+This starter uses PNPM catalogs in [pnpm-workspace.yaml](../../pnpm-workspace.yaml) for common dependency versions. Use `catalog:` when multiple workspaces should share the same version of a dependency.
 
 ## Adding A New Package
 

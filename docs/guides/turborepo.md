@@ -4,7 +4,7 @@
 
 TurboRepo runs tasks across the workspace, respects dependency order, and caches work when possible.
 
-The task graph is configured in [turbo.json](/Users/mokshitjain/Codes/Company/JainParichay/Core/turbo.json).
+The task graph is configured in [turbo.json](../../turbo.json).
 
 ## Root Commands
 
@@ -32,6 +32,7 @@ Turbo works well with PNPM filters:
 ```bash
 pnpm --filter @workspace-starter/web build
 pnpm --filter @workspace-starter/api typecheck
+pnpm --filter @workspace-starter/i18n test
 ```
 
 Use filtering when you want to focus on one workspace during development without losing the shared monorepo setup.

@@ -1,6 +1,6 @@
 # PNPM Turbo Workspace Starter
 
-A generic monorepo starter built with PNPM workspaces, TurboRepo, Astro + React, NestJS, shared UI components, shared types, and reusable TypeScript configs.
+A generic monorepo starter built with PNPM workspaces, TurboRepo, Astro + React, NestJS, shared UI components, shared types, shared i18n helpers, and reusable TypeScript configs.
 
 ## Included Workspaces
 
@@ -11,6 +11,7 @@ apps/
 packages/
   ui       Shared React UI components
   types    Shared types and contracts
+  i18n     Shared localization helpers and validation
   config-typescript  Reusable tsconfig presets
 ```
 
@@ -56,6 +57,7 @@ pnpm test
 pnpm --filter @workspace-starter/web dev
 pnpm --filter @workspace-starter/api dev
 pnpm --filter @workspace-starter/ui build
+pnpm --filter @workspace-starter/i18n test
 ```
 
 ## Why This Starter
@@ -64,6 +66,7 @@ pnpm --filter @workspace-starter/ui build
 - TurboRepo coordinates tasks across apps and packages.
 - Astro + React provides a fast frontend shell with room for islands and shared UI.
 - NestJS + tRPC demonstrates a backend that can share contracts with the frontend.
+- Astro i18n routing plus JSON catalogs demonstrate a localization-ready frontend foundation.
 
 ## Guides
 

@@ -1,34 +1,38 @@
 ---
-import { homeBlueprint, homeCopy, homePackages, type HomeLocale } from '../../content/home';
-import { localizePath } from '../../content/onboarding';
+import { getRelativeLocaleUrl } from 'astro:i18n';
+
+import { featureItems, homeBlueprint, homePackages, pipelineStages, quickstartItems } from '../../content/home';
+import type { Locale } from '../../i18n/config';
+import { getTranslations } from '../../i18n/messages';
 import { HeroGraph } from './HeroGraph';
 import { CopyCommandButton } from './CopyCommandButton';
 
 interface Props {
-  locale: HomeLocale;
+  locale: Locale;
 }
 
 const { locale } = Astro.props;
-const copy = homeCopy[locale];
-const nextLocale = locale === 'en' ? 'de' : 'en';
+const t = getTranslations(locale, 'home');
+const nextLocale: Locale = locale === 'en' ? 'de' : 'en';
+const [wordmarkPrefix, wordmarkSuffix = ''] = t('wordmark').split('/');
 ---
 
 <div class="home-shell">
   <div class="container">
     <nav>
       <div class="nav-wordmark">
-        mono<span class="slash">/</span>repo
+        {wordmarkPrefix}<span class="slash">/</span>{wordmarkSuffix}
       </div>
       <ul class="nav-center">
-        <li><a href="#architecture">{copy.nav.architecture}</a></li>
-        <li><a href="#pipeline">{copy.nav.pipeline}</a></li>
-        <li><a href="#features">{copy.nav.features}</a></li>
-        <li><a href="#quickstart">{copy.nav.quickstart}</a></li>
+        <li><a href="#architecture">{t('nav.architecture')}</a></li>
+        <li><a href="#pipeline">{t('nav.pipeline')}</a></li>
+        <li><a href="#features">{t('nav.features')}</a></li>
+        <li><a href="#quickstart">{t('nav.quickstart')}</a></li>
       </ul>
       <div class="nav-right">
-        <a class="nav-lang" href={localizePath(nextLocale, '/')}>{copy.langLabel}</a>
-        <span class="nav-version">{copy.version}</span>
-        <a href="#" class="nav-gh" aria-label={copy.nav.github}>
+        <a class="nav-lang" href={getRelativeLocaleUrl(nextLocale, '')}>{t('langLabel')}</a>
+        <span class="nav-version">{t('version')}</span>
+        <a href="#" class="nav-gh" aria-label={t('nav.github')}>
           <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
         </a>
       </div>
@@ -38,23 +42,23 @@ const nextLocale = locale === 'en' ? 'de' : 'en';
   <div class="container">
     <section class="hero">
       <div class="hero-content">
-        <div class="hero-eyebrow">{copy.hero.eyebrow}</div>
+        <div class="hero-eyebrow">{t('hero.eyebrow')}</div>
         <h1>
-          {copy.hero.titleLines[0]}<br />
-          every <em>{copy.hero.accent}</em><br />
-          {copy.hero.titleLines[2]}
+          {t('hero.title.line1')}<br />
+          {t('hero.title.line2Lead')} <em>{t('hero.title.accent')}</em><br />
+          {t('hero.title.line3')}
         </h1>
-        <p class="hero-sub">{copy.hero.body}</p>
+        <p class="hero-sub">{t('hero.body')}</p>
         <div class="hero-actions">
-          <a href="#quickstart" class="btn-clone">{copy.hero.primary}</a>
-          <a href="#architecture" class="btn-explore">{copy.hero.secondary}</a>
+          <a href="#quickstart" class="btn-clone">{t('hero.primary')}</a>
+          <a href="#architecture" class="btn-explore">{t('hero.secondary')}</a>
         </div>
         <div class="hero-cmd">
-          <code>{copy.hero.command}</code>
+          <code>{t('hero.command')}</code>
           <CopyCommandButton
-            command={copy.hero.command}
-            idleLabel={copy.hero.copyIdle}
-            doneLabel={copy.hero.copyDone}
+            command={t('hero.command')}
+            idleLabel={t('hero.copyIdle')}
+            doneLabel={t('hero.copyDone')}
             client:load
           />
         </div>
@@ -71,13 +75,13 @@ const nextLocale = locale === 'en' ? 'de' : 'en';
   <div class="container" id="architecture">
     <section class="section reveal">
       <div class="section-header">
-        <div class="section-num">{copy.architecture.number}</div>
-        <div class="section-title">{copy.architecture.title}</div>
-        <p class="section-desc">{copy.architecture.description}</p>
+        <div class="section-num">{t('architecture.number')}</div>
+        <div class="section-title">{t('architecture.title')}</div>
+        <p class="section-desc">{t('architecture.description')}</p>
       </div>
       <div class="arch-layout">
         <div class="blueprint">
-          <div class="blueprint-title">{copy.architecture.blueprintTitle}</div>
+          <div class="blueprint-title">{t('architecture.blueprintTitle')}</div>
           {homeBlueprint.map((item, index) => (
             <>
               <div class:list={['bp-row', 'dir' in item && item.dir && 'dir', item.level === 1 && 'l1']}>
@@ -94,9 +98,9 @@ const nextLocale = locale === 'en' ? 'de' : 'en';
               <div class="pkg-item-header">
                 <span class="pkg-item-dot"></span>
                 <h3>{item.title}</h3>
-                <span class="pkg-item-path">{item.path}</span>
+                <span class="pkg-item-path">{t(`packages.${item.id}.path`)}</span>
               </div>
-              <p>{item.body}</p>
+              <p>{t(`packages.${item.id}.body`)}</p>
             </div>
           ))}
         </div>
@@ -107,15 +111,15 @@ const nextLocale = locale === 'en' ? 'de' : 'en';
   <div class="container" id="pipeline">
     <section class="section reveal">
       <div class="section-header">
-        <div class="section-num">{copy.pipeline.number}</div>
-        <div class="section-title">{copy.pipeline.title}</div>
-        <p class="section-desc">{copy.pipeline.description}</p>
+        <div class="section-num">{t('pipeline.number')}</div>
+        <div class="section-title">{t('pipeline.title')}</div>
+        <p class="section-desc">{t('pipeline.description')}</p>
       </div>
       <div class="pipeline-track">
-        {copy.pipeline.stages.map((stage) => (
+        {pipelineStages.map((stage) => (
           <div class="pipe-stage">
             <div class="pipe-icon">{stage.icon}</div>
-            <h4>{stage.label}</h4>
+            <h4>{t(`pipeline.stages.${stage.id}`)}</h4>
             <p>{stage.command}</p>
             <div class="pipe-arrow"></div>
           </div>
@@ -127,18 +131,18 @@ const nextLocale = locale === 'en' ? 'de' : 'en';
   <div class="container" id="features">
     <section class="section reveal">
       <div class="section-header">
-        <div class="section-num">{copy.features.number}</div>
+        <div class="section-num">{t('features.number')}</div>
         <div class="section-title">
-          {copy.features.title}<br />{copy.features.titleBreak}
+          {t('features.title')}<br />{t('features.titleBreak')}
         </div>
-        <p class="section-desc">{copy.features.description}</p>
+        <p class="section-desc">{t('features.description')}</p>
       </div>
       <div class="feat-grid">
-        {copy.features.items.map((item, index) => (
+        {featureItems.map((item, index) => (
           <div class="feat-card">
             <div class="feat-num">{String(index + 1).padStart(2, '0')}</div>
-            <h3>{item.title}</h3>
-            <p>{item.body}</p>
+            <h3>{t(`features.items.${item}.title`)}</h3>
+            <p>{t(`features.items.${item}.body`)}</p>
           </div>
         ))}
       </div>
@@ -148,15 +152,15 @@ const nextLocale = locale === 'en' ? 'de' : 'en';
   <div class="container" id="quickstart">
     <section class="section reveal">
       <div class="section-header">
-        <div class="section-num">{copy.quickstart.number}</div>
-        <div class="section-title">{copy.quickstart.title}</div>
-        <p class="section-desc">{copy.quickstart.description}</p>
+        <div class="section-num">{t('quickstart.number')}</div>
+        <div class="section-title">{t('quickstart.title')}</div>
+        <p class="section-desc">{t('quickstart.description')}</p>
       </div>
       <div class="qs-track">
-        {copy.quickstart.items.map((item) => (
+        {quickstartItems.map((item) => (
           <div class="qs-card">
-            <h4>{item.title}</h4>
-            <p>{item.body}</p>
+            <h4>{t(`quickstart.items.${item.id}.title`)}</h4>
+            <p>{t(`quickstart.items.${item.id}.body`)}</p>
             <div class="qs-cmd"><span class="dollar">$</span>{item.command}</div>
           </div>
         ))}
@@ -167,23 +171,23 @@ const nextLocale = locale === 'en' ? 'de' : 'en';
   <div class="container">
     <section class="cta-band reveal">
       <div class="cta-band-title">
-        {copy.cta.titleLines[0]}<br />
-        and <em>{copy.cta.accent}</em>?
+        {t('cta.title.line1')}<br />
+        {t('cta.title.line2Lead')} <em>{t('cta.title.accent')}</em>{t('cta.title.suffix')}
       </div>
-      <p>{copy.cta.body}</p>
-      <a href="#quickstart" class="btn-clone cta-button">{copy.cta.action}</a>
+      <p>{t('cta.body')}</p>
+      <a href="#quickstart" class="btn-clone cta-button">{t('cta.action')}</a>
     </section>
   </div>
 
   <div class="container">
     <footer>
       <div class="footer-inner">
-        <div class="footer-left">{copy.footer.license}</div>
+        <div class="footer-left">{t('footer.license')}</div>
         <ul class="footer-links">
-          <li><a href="#">{copy.nav.github}</a></li>
-          <li><a href="#">{copy.nav.docs}</a></li>
-          <li><a href="#">{copy.nav.discord}</a></li>
-          <li><a href="#">{copy.nav.changelog}</a></li>
+          <li><a href="#">{t('nav.github')}</a></li>
+          <li><a href="#">{t('nav.docs')}</a></li>
+          <li><a href="#">{t('nav.discord')}</a></li>
+          <li><a href="#">{t('nav.changelog')}</a></li>
         </ul>
       </div>
     </footer>

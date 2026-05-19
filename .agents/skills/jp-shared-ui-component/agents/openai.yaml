@@ -1,0 +1,4 @@
+interface:
+  display_name: "JP Shared UI Component"
+  short_description: "Build shared UI components correctly"
+  default_prompt: "Use $jp-shared-ui-component to add a reusable React component to packages/ui and wire it into the web app."

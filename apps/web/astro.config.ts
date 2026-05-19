@@ -2,8 +2,20 @@ import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 
+import { defaultLocale, locales } from './src/i18n/config';
+
+const i18nLocales = [...locales];
+
 export default defineConfig({
   output: 'static',
+
+  i18n: {
+    locales: i18nLocales,
+    defaultLocale,
+    routing: {
+      prefixDefaultLocale: false,
+    },
+  },
 
   integrations: [react()],
 

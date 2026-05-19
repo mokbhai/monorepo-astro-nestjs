@@ -139,6 +139,9 @@ importers:
       '@trpc/react-query':
         specifier: 'catalog:'
         version: 11.17.0(@tanstack/react-query@5.100.11(react@19.2.6))(@trpc/client@11.17.0(@trpc/server@11.17.0(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.17.0(typescript@6.0.3))(react@19.2.6)(typescript@6.0.3)
+      '@workspace-starter/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@workspace-starter/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -187,6 +190,18 @@ importers:
         version: 6.0.3
 
   packages/config-typescript: {}
+
+  packages/i18n:
+    devDependencies:
+      '@workspace-starter/config-typescript':
+        specifier: workspace:*
+        version: link:../config-typescript
+      eslint:
+        specifier: catalog:dev-tools
+        version: 10.4.0(jiti@2.7.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
 
   packages/types:
     devDependencies:

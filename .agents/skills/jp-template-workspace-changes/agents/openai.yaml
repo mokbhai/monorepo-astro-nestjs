@@ -1,0 +1,4 @@
+interface:
+  display_name: "JP Template Workspace Changes"
+  short_description: "Keep JP workspace changes aligned"
+  default_prompt: "Use $jp-template-workspace-changes to add or rename a workspace package without breaking manifests."
