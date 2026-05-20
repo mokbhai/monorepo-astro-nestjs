@@ -1,8 +1,25 @@
 # PNPM Turbo Workspace Starter
 
-A generic monorepo starter built with PNPM workspaces, TurboRepo, Astro + React, NestJS, shared UI components, shared types, shared i18n helpers, and reusable TypeScript configs.
+Stop spending the first stretch of a new project wiring the same architecture from scratch.
 
-## Included Workspaces
+This starter gives you a full-stack TypeScript monorepo with the core pieces already connected: an Astro + React web app, a NestJS + tRPC API, shared UI, shared types, shared i18n helpers, reusable TypeScript configs, Turborepo task orchestration, Git hooks, and CI checks.
+
+![A developer surrounded by messy setup work that resolves into a clean monorepo architecture board.](./docs/assets/template-architecture-pain.png)
+
+## Why This Exists
+
+Setting up a serious app from a blank folder usually means making a pile of early decisions before the product work even starts:
+
+- How should apps and packages be split?
+- How should the frontend talk to the backend?
+- Where do shared contracts live?
+- How do local packages stay linked without version drift?
+- Which commands should run in CI, Git hooks, and local development?
+- How do you keep the setup easy to rename for the next project?
+
+This template answers those questions with a small, working baseline. It is opinionated enough to be useful, but not so heavy that you have to fight it.
+
+## What's Inside
 
 ```text
 apps/
@@ -15,15 +32,53 @@ packages/
   config-typescript  Reusable tsconfig presets
 ```
 
+The sample app is intentionally real enough to prove the architecture:
+
+- The web app imports shared UI and i18n packages.
+- React islands call the typed tRPC API.
+- Frontend and backend code share contracts through workspace packages.
+- Internal dependencies use `workspace:*` instead of duplicated package versions.
+- Turborepo runs build, lint, typecheck, and test tasks across the graph.
+
+## Stack
+
+- PNPM workspaces
+- Turborepo
+- Astro + React
+- NestJS + Fastify
+- tRPC
+- React Query
+- TypeScript
+- Tailwind CSS
+- Node test runner and Vitest
+- ESLint and Prettier
+- Git hooks and GitHub Actions
+
 ## Getting Started
+
+Use Node `>=22.13.0` and the pinned package manager, `pnpm@11.1.3`.
 
 ```bash
 pnpm install
 pnpm dev
+```
+
+Default local ports:
+
+- Web: `http://127.0.0.1:4321`
+- API: `http://localhost:3001`
+
+For a production-style local run:
+
+```bash
 pnpm start
 ```
 
+`pnpm start` builds the workspace first, then launches the web and API production servers together.
+
 ## One-Command Bootstrap
+
+Create a fresh project from the starter:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mokbhai/JP/main/scripts/bootstrap.sh | bash -s -- my-app
@@ -35,15 +90,10 @@ The bootstrap flow:
 - launches an interactive TUI installer
 - renames the root package
 - runs `pnpm install`
-- removes the starter git history
+- removes the starter Git history
 - removes the bootstrap installer files before commit
-- initializes a fresh git repository
+- initializes a fresh Git repository
 - creates the first commit automatically
-
-The default local ports are:
-
-- Web: `http://127.0.0.1:4321`
-- API: `http://localhost:3001`
 
 ## Common Commands
 
@@ -52,6 +102,7 @@ pnpm dev
 pnpm start
 pnpm setup:starter
 pnpm build
+pnpm lint
 pnpm format
 pnpm format:check
 pnpm typecheck
@@ -59,6 +110,11 @@ pnpm test
 pnpm verify:fast
 pnpm verify
 pnpm hooks:install
+```
+
+Useful workspace-focused commands:
+
+```bash
 pnpm --filter @workspace-starter/web dev
 pnpm --filter @workspace-starter/api dev
 pnpm --filter @workspace-starter/ui build
@@ -67,31 +123,33 @@ pnpm --filter @workspace-starter/i18n test
 
 ## Quality Gates
 
-Run `pnpm hooks:install` once per checkout to point Git at the repository hooks in `.githooks`.
+Run this once per checkout to use the repository hooks:
+
+```bash
+pnpm hooks:install
+```
 
 - `pre-commit` runs `pnpm verify:fast`, which checks lint, formatting, types, and whitespace errors.
 - `pre-push` runs `pnpm verify`, which adds the full build and test suite.
 - GitHub Actions runs `pnpm verify` on pull requests and pushes to `main`.
 
-## Why This Starter
+## Customizing The Template
 
-- PNPM workspaces keep dependencies and local package links manageable.
-- TurboRepo coordinates tasks across apps and packages.
-- Astro + React provides a fast frontend shell with room for islands and shared UI.
-- NestJS + tRPC demonstrates a backend that can share contracts with the frontend.
-- Astro i18n routing plus JSON catalogs demonstrate a localization-ready frontend foundation.
+This starter uses the scope `@workspace-starter/*`. Replace it with your own project or organization scope in package manifests, imports, TypeScript path aliases, and docs examples.
+
+The included homepage is a showcase page. Once the repo structure is in place, replace it with your product UI and keep the workspace boundaries.
 
 ## Guides
 
 - [PNPM workspace guide](./docs/guides/pnpm-workspace.md)
-- [TurboRepo guide](./docs/guides/turborepo.md)
+- [Turborepo guide](./docs/guides/turborepo.md)
 - [Template customization guide](./docs/guides/customizing-the-template.md)
 
-## Starter Workflow
+## Suggested Workflow
 
 1. Install dependencies with `pnpm install`.
-2. Run the workspace with `pnpm dev` for local development.
-3. Run `pnpm start` to build and launch the production web and API servers together.
-4. Explore the sample app and shared packages.
-5. Rename the scope and packages for your own project.
+2. Run the workspace with `pnpm dev`.
+3. Explore the web app, API, and shared packages.
+4. Rename the scope and packages for your project.
+5. Run `pnpm verify:fast` before committing.
 6. Add new apps or packages as the monorepo grows.
