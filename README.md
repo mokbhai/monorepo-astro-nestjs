@@ -91,7 +91,7 @@ The Node host serves the primary Astro app at `/` and the secondary Astro app at
 Create a fresh project from the starter:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mokbhai/JP/main/scripts/bootstrap.sh | bash -s -- my-app
+curl -fsSL https://raw.githubusercontent.com/mokbhai/monorepo-astro-nestjs/main/scripts/bootstrap.sh | bash -s -- my-app
 ```
 
 The bootstrap flow:

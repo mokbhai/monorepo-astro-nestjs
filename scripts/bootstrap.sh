@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/mokbhai/JP.git}"
+REPO_URL="${REPO_URL:-https://github.com/mokbhai/monorepo-astro-nestjs.git}"
 BOOTSTRAP_REF="${BOOTSTRAP_REF:-main}"
 BOOTSTRAP_USE_TTY="${BOOTSTRAP_USE_TTY:-1}"
 
