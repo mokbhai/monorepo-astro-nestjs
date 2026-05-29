@@ -76,15 +76,9 @@ For a production-style local run:
 pnpm start
 ```
 
-`pnpm start` builds the workspace first, then launches the web and API production servers together.
+`pnpm start` builds the workspace, stages every Astro frontend into the web host, then launches the web host and API production servers together — the same topology as production. The web host serves the primary frontend (`web`) at `/` and every other frontend under its directory name (e.g. `secondary-web` at `/secondary-web`).
 
-To test the Node-hosted multi-Astro deployment strategy:
-
-```bash
-pnpm start:web-host
-```
-
-The Node host serves the primary Astro app at `/` and the secondary Astro app at `/secondary`.
+See [docs/guides/deployment.md](docs/guides/deployment.md) for how frontends and backends are built, published, and deployed.
 
 ## One-Command Bootstrap
 
@@ -110,7 +104,7 @@ The bootstrap flow:
 ```bash
 pnpm dev
 pnpm start
-pnpm start:web-host
+pnpm build:frontends
 pnpm setup:starter
 pnpm template:remove-web-apps:dry-run
 pnpm template:remove-web-apps -- --yes
@@ -140,10 +134,9 @@ Useful Docker commands:
 
 ```bash
 docker compose up --build
-docker compose -f docker-compose.web-host.yml up --build
 ```
 
-The default compose file runs the Astro standalone web container and the API. The `docker-compose.web-host.yml` file runs the Node web host, which serves both Astro builds, plus the API.
+The compose file runs two services: the **web host** (one image bundling every Astro frontend, served from one origin) and the **API**. Add a backend by giving it an `apps/<name>/Dockerfile`; it then builds and deploys as its own image. See [docs/guides/deployment.md](docs/guides/deployment.md).
 
 ## Quality Gates
 

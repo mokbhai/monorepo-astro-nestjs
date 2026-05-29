@@ -18,6 +18,9 @@ build
 # Turbo
 .turbo
 
+# Frontends staged for web-host aggregation
+apps/web-host/sites
+
 # Env files
 .env
 .env.local

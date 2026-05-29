@@ -1,32 +1,19 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createStaticHostServer, type MountedSite } from './static-host.js';
+import { createStaticHostServer, discoverMountedSites } from './static-host.js';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
 const host = process.env.HOST ?? '0.0.0.0';
 const port = Number.parseInt(process.env.PORT ?? '4321', 10);
 
-const primaryWebDist =
-  process.env.PRIMARY_WEB_DIST ??
-  path.resolve(moduleDir, '../../web/dist/client');
-const secondaryWebDist =
-  process.env.SECONDARY_WEB_DIST ??
-  path.resolve(moduleDir, '../../secondary-web/dist');
-const secondaryBasePath = process.env.SECONDARY_BASE_PATH ?? '/secondary';
+// Each subdirectory of SITES_DIR is a static frontend build staged by
+// scripts/build-frontends.mjs. The primary frontend is mounted at /, every
+// other frontend at /<dir-name>. Adding a frontend requires no change here.
+const sitesDir = process.env.SITES_DIR ?? path.resolve(moduleDir, '../sites');
+const primaryFrontend = process.env.PRIMARY_FRONTEND ?? 'web';
 
-const sites: MountedSite[] = [
-  {
-    name: 'primary-web',
-    basePath: '/',
-    rootDir: primaryWebDist,
-  },
-  {
-    name: 'secondary-web',
-    basePath: secondaryBasePath,
-    rootDir: secondaryWebDist,
-  },
-];
+const sites = discoverMountedSites(sitesDir, primaryFrontend);
 
 const server = createStaticHostServer({ sites });
 

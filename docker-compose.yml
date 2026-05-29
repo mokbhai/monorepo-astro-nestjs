@@ -1,14 +1,15 @@
 services:
-  web:
+  web-host:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: apps/web-host/Dockerfile
       args:
         PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3001}
     environment:
       NODE_ENV: production
       PORT: 4321
       HOST: 0.0.0.0
+      PRIMARY_FRONTEND: ${PRIMARY_FRONTEND:-web}
     ports:
       - '${WEB_PORT:-4321}:4321'
     depends_on:

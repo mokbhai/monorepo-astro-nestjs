@@ -12,6 +12,52 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 
+const KNOWN_START_SCRIPT =
+  'pnpm build && node scripts/build-frontends.mjs && pnpm -r --parallel --filter @workspace-starter/web-host --filter @workspace-starter/api start';
+
+const WEB_HOST_DOCKER_COMPOSE = `services:
+  web-host:
+    build:
+      context: .
+      dockerfile: apps/web-host/Dockerfile
+      args:
+        PUBLIC_API_URL: \${PUBLIC_API_URL:-http://localhost:3001}
+    environment:
+      NODE_ENV: production
+      PORT: 4321
+      HOST: 0.0.0.0
+      PRIMARY_FRONTEND: \${PRIMARY_FRONTEND:-web}
+    ports:
+      - '\${WEB_PORT:-4321}:4321'
+    depends_on:
+      api:
+        condition: service_started
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}
+    ports:
+      - '\${API_PORT:-3001}:3001'
+`;
+
+const API_ONLY_DOCKER_COMPOSE = `services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}
+    ports:
+      - '\${API_PORT:-3001}:3001'
+`;
+
 async function loadWebAppRemovalHelpers() {
   const moduleUrl = pathToFileURL(
     path.join(process.cwd(), 'scripts/template/remove-web-apps.mjs'),
@@ -31,10 +77,9 @@ async function createFixture() {
     private: true,
     scripts: {
       dev: 'turbo dev',
-      start:
-        'pnpm build && pnpm -r --parallel --filter @workspace-starter/web --filter @workspace-starter/api start',
-      'start:web-host':
-        'pnpm build && pnpm -r --parallel --filter @workspace-starter/web-host --filter @workspace-starter/api start',
+      start: KNOWN_START_SCRIPT,
+      'build:frontends': 'node scripts/build-frontends.mjs',
+      deploy: 'node scripts/deploy/run.mjs',
       test: 'node --test tests/root-start-scripts.test.mjs tests/setup-starter.test.mjs tests/remove-template-web-apps.test.mjs tests/repository-guardrails.test.mjs && turbo test',
       'template:remove-web-apps': 'node scripts/template/remove-web-apps.mjs',
     },
@@ -46,6 +91,12 @@ async function createFixture() {
     "import test from 'node:test';\n",
   );
 
+  await mkdir(path.join(tempDir, 'scripts'), { recursive: true });
+  await writeFile(
+    path.join(tempDir, 'scripts', 'build-frontends.mjs'),
+    'export {};\n',
+  );
+
   for (const appName of ['api', 'web', 'secondary-web', 'web-host']) {
     await mkdir(path.join(tempDir, 'apps', appName), { recursive: true });
     await writeJson(path.join(tempDir, 'apps', appName, 'package.json'), {
@@ -55,68 +106,7 @@ async function createFixture() {
 
   await writeFile(
     path.join(tempDir, 'docker-compose.yml'),
-    `services:
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        PUBLIC_API_URL: \${PUBLIC_API_URL:-http://localhost:3001}
-    environment:
-      NODE_ENV: production
-      PORT: 4321
-      HOST: 0.0.0.0
-    ports:
-      - '\${WEB_PORT:-4321}:4321'
-    depends_on:
-      api:
-        condition: service_started
-
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}
-    ports:
-      - '\${API_PORT:-3001}:3001'
-`,
-  );
-  await writeFile(
-    path.join(tempDir, 'docker-compose.web-host.yml'),
-    `services:
-  web-host:
-    build:
-      context: .
-      dockerfile: apps/web-host/Dockerfile
-      args:
-        PUBLIC_API_URL: \${PUBLIC_API_URL:-http://localhost:3001}
-    environment:
-      NODE_ENV: production
-      PORT: 4321
-      HOST: 0.0.0.0
-      PRIMARY_WEB_DIST: /app/web
-      SECONDARY_BASE_PATH: /secondary
-      SECONDARY_WEB_DIST: /app/secondary-web
-    ports:
-      - '\${WEB_HOST_PORT:-4321}:4321'
-    depends_on:
-      api:
-        condition: service_started
-
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}
-    ports:
-      - '\${API_PORT:-3001}:3001'
-`,
+    WEB_HOST_DOCKER_COMPOSE,
   );
 
   return tempDir;
@@ -147,13 +137,17 @@ test('removeTemplateWebApps removes bundled web apps and rewrites root scripts',
       rootPackage.scripts.start,
       'pnpm build && pnpm --filter @workspace-starter/api start',
     );
-    assert.equal(rootPackage.scripts['start:web-host'], undefined);
+    assert.equal(rootPackage.scripts['build:frontends'], undefined);
+    assert.equal(rootPackage.scripts.deploy, 'node scripts/deploy/run.mjs');
     assert.equal(rootPackage.scripts.dev, 'turbo dev');
     assert.equal(
       rootPackage.scripts['template:remove-web-apps'],
       'node scripts/template/remove-web-apps.mjs',
     );
 
+    await assert.rejects(
+      access(path.join(tempDir, 'scripts', 'build-frontends.mjs')),
+    );
     await assert.rejects(
       access(path.join(tempDir, 'tests', 'root-start-scripts.test.mjs')),
     );
@@ -174,21 +168,7 @@ test('removeTemplateWebApps removes bundled web apps and rewrites root scripts',
 
     assert.equal(
       await readFile(path.join(tempDir, 'docker-compose.yml'), 'utf8'),
-      `services:
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}
-    ports:
-      - '\${API_PORT:-3001}:3001'
-`,
-    );
-    await assert.rejects(
-      access(path.join(tempDir, 'docker-compose.web-host.yml')),
+      API_ONLY_DOCKER_COMPOSE,
     );
   } finally {
     await rm(tempDir, { recursive: true, force: true });
@@ -217,17 +197,21 @@ test('removeTemplateWebApps dry run leaves files unchanged', async () => {
     const rootPackage = JSON.parse(
       await readFile(path.join(tempDir, 'package.json'), 'utf8'),
     );
-    assert.match(rootPackage.scripts.start, /@workspace-starter\/web/);
+    assert.match(rootPackage.scripts.start, /@workspace-starter\/web-host/);
+    assert.equal(
+      rootPackage.scripts['build:frontends'],
+      'node scripts/build-frontends.mjs',
+    );
     assert.match(
       rootPackage.scripts.test,
       /tests\/root-start-scripts\.test\.mjs/,
     );
+    await access(path.join(tempDir, 'scripts', 'build-frontends.mjs'));
     await access(path.join(tempDir, 'tests', 'root-start-scripts.test.mjs'));
     assert.match(
       await readFile(path.join(tempDir, 'docker-compose.yml'), 'utf8'),
-      /apps\/web\/Dockerfile/,
+      /apps\/web-host\/Dockerfile/,
     );
-    await access(path.join(tempDir, 'docker-compose.web-host.yml'));
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
@@ -262,10 +246,10 @@ test('removeTemplateWebApps refuses custom Docker compose files that reference r
     await writeFile(
       path.join(tempDir, 'docker-compose.yml'),
       `services:
-  custom-web:
+  custom-host:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: apps/web-host/Dockerfile
 `,
     );
 

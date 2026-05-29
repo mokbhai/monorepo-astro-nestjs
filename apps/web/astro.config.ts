@@ -11,11 +11,17 @@ const nodeEnv = (
     process?: { env?: Record<string, string | undefined> };
   }
 ).process?.env;
-const isGitHubPagesBuild = nodeEnv?.ASTRO_DEPLOY_TARGET === 'github-pages';
+// A static build emits a flat dist/ with no server runtime. Used both for
+// GitHub Pages and for aggregation behind apps/web-host. Any other value (or
+// none) keeps the node standalone adapter for local preview and standalone
+// containers.
+const isStaticBuild =
+  nodeEnv?.ASTRO_DEPLOY_TARGET === 'github-pages' ||
+  nodeEnv?.ASTRO_DEPLOY_TARGET === 'static';
 
 export default defineConfig({
   output: 'static',
-  ...(isGitHubPagesBuild
+  ...(isStaticBuild
     ? {}
     : {
         adapter: node({

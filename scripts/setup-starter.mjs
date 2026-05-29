@@ -9,6 +9,10 @@ import {
   validatePackageName,
 } from './lib/customize-root-package.mjs';
 import { removeInstallerArtifacts } from './lib/remove-installer-artifacts.mjs';
+import {
+  scaffoldDeployAdapter,
+  validateDeployTarget,
+} from './lib/scaffold-deploy-adapter.mjs';
 import { captureCommand, runCommand } from './lib/run-command.mjs';
 import {
   createPrompter,
@@ -97,11 +101,34 @@ async function main() {
       renderFailure(validation.message);
     }
 
+    let deployTarget = '';
+    while (true) {
+      deployTarget = (
+        await promptText(
+          prompter,
+          'Deploy target (optional, blank to skip)',
+          '',
+        )
+      ).trim();
+
+      if (!deployTarget) {
+        break;
+      }
+
+      const validation = validateDeployTarget(deployTarget);
+      if (validation.valid) {
+        break;
+      }
+
+      renderFailure(validation.message);
+    }
+
     const gitIdentity = await resolveGitIdentity(repoDir, prompter);
 
     renderSection('Summary', [
       `Directory: ${repoDir}`,
       `Root package: ${packageName}`,
+      `Deploy target: ${deployTarget || '(none)'}`,
       `Git user: ${gitIdentity.gitName} <${gitIdentity.gitEmail}>`,
     ]);
 
@@ -154,6 +181,16 @@ async function main() {
           );
         },
       },
+      ...(deployTarget
+        ? [
+            {
+              label: `Scaffold ${deployTarget} deploy adapter`,
+              status: 'pending',
+              run: async () =>
+                scaffoldDeployAdapter({ repoDir, target: deployTarget }),
+            },
+          ]
+        : []),
       {
         label: 'Remove installer files',
         status: 'pending',
