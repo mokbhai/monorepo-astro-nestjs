@@ -79,7 +79,7 @@ async function createFixture() {
       dev: 'turbo dev',
       start: KNOWN_START_SCRIPT,
       'build:frontends': 'node scripts/build-frontends.mjs',
-      deploy: 'node scripts/deploy/run.mjs',
+      'deploy:run': 'node scripts/deploy/run.mjs',
       test: 'node --test tests/root-start-scripts.test.mjs tests/setup-starter.test.mjs tests/remove-template-web-apps.test.mjs tests/repository-guardrails.test.mjs && turbo test',
       'template:remove-web-apps': 'node scripts/template/remove-web-apps.mjs',
     },
@@ -138,7 +138,10 @@ test('removeTemplateWebApps removes bundled web apps and rewrites root scripts',
       'pnpm build && pnpm --filter @workspace-starter/api start',
     );
     assert.equal(rootPackage.scripts['build:frontends'], undefined);
-    assert.equal(rootPackage.scripts.deploy, 'node scripts/deploy/run.mjs');
+    assert.equal(
+      rootPackage.scripts['deploy:run'],
+      'node scripts/deploy/run.mjs',
+    );
     assert.equal(rootPackage.scripts.dev, 'turbo dev');
     assert.equal(
       rootPackage.scripts['template:remove-web-apps'],

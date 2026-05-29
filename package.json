@@ -6,7 +6,7 @@
     "dev": "turbo dev",
     "start": "pnpm build && node scripts/build-frontends.mjs && pnpm -r --parallel --filter @workspace-starter/web-host --filter @workspace-starter/api start",
     "build:frontends": "node scripts/build-frontends.mjs",
-    "deploy": "node scripts/deploy/run.mjs",
+    "deploy:run": "node scripts/deploy/run.mjs",
     "setup:starter": "node scripts/setup-starter.mjs",
     "template:remove-web-apps": "node scripts/template/remove-web-apps.mjs",
     "template:remove-web-apps:dry-run": "node scripts/template/remove-web-apps.mjs --dry-run",
