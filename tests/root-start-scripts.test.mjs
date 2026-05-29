@@ -9,10 +9,10 @@ async function readPackageJson(relativePath) {
   return JSON.parse(await readFile(file, 'utf8'));
 }
 
-test('workspace exposes production start scripts for root, web, and api', async () => {
-  const [rootPkg, webPkg, apiPkg] = await Promise.all([
+test('workspace exposes production start scripts for root, web-host, and api', async () => {
+  const [rootPkg, webHostPkg, apiPkg] = await Promise.all([
     readPackageJson('package.json'),
-    readPackageJson('apps/web/package.json'),
+    readPackageJson('apps/web-host/package.json'),
     readPackageJson('apps/api/package.json'),
   ]);
 
@@ -28,8 +28,13 @@ test('workspace exposes production start scripts for root, web, and api', async 
   );
   assert.match(
     rootPkg.scripts.start,
-    /@workspace-starter\/web/,
-    'root start script should launch the web workspace',
+    /scripts\/build-frontends\.mjs/,
+    'root start script should stage frontends for web-host',
+  );
+  assert.match(
+    rootPkg.scripts.start,
+    /@workspace-starter\/web-host/,
+    'root start script should launch the web-host workspace',
   );
   assert.match(
     rootPkg.scripts.start,
@@ -38,9 +43,9 @@ test('workspace exposes production start scripts for root, web, and api', async 
   );
 
   assert.equal(
-    webPkg.scripts?.start,
-    'astro preview --host 127.0.0.1',
-    'web package.json should define a production start script',
+    webHostPkg.scripts?.start,
+    'node dist/server.js',
+    'web-host package.json should define a production start script',
   );
   assert.equal(
     apiPkg.scripts?.start,

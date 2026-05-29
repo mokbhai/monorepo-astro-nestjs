@@ -51,6 +51,6 @@ This removes:
 - `apps/secondary-web`
 - `apps/web-host`
 
-It also rewrites the root `start` script to launch only `@workspace-starter/api`, removes `start:web-host`, rewrites the stock `docker-compose.yml` to API-only, removes the stock `docker-compose.web-host.yml`, removes the bundled web/api start-scripts test (`tests/root-start-scripts.test.mjs`), and drops that file from the root `test` script. The command refuses to run if a root script or Docker Compose file has custom references to one of the removed web workspaces, because those references need a human migration.
+It also rewrites the root `start` script to launch only `@workspace-starter/api`, removes the `build:frontends` script and `scripts/build-frontends.mjs` (the frontend staging helper), rewrites the stock `docker-compose.yml` to API-only, removes the bundled web/api start-scripts test (`tests/root-start-scripts.test.mjs`), and drops that file from the root `test` script. The command refuses to run if a root script or Docker Compose file has custom references to one of the removed web workspaces, because those references need a human migration.
 
 After removal, create your own app under `apps/` and give it a workspace package name under the current scope, such as `@workspace-starter/web`. Make sure its scripts line up with the root Turbo tasks: `build`, `dev`, `typecheck`, `lint`, and `test` where applicable. Use `workspace:*` for internal packages and `catalog:` versions for shared dependencies already listed in `pnpm-workspace.yaml`.

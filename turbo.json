@@ -5,6 +5,12 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": [
+        "ASTRO_DEPLOY_TARGET",
+        "ASTRO_BASE",
+        "ASTRO_SITE",
+        "PUBLIC_API_URL"
+      ],
       "outputs": ["dist/**", ".astro/**"]
     },
     "dev": {

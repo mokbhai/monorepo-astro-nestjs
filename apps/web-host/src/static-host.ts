@@ -1,4 +1,4 @@
-import { createReadStream } from 'node:fs';
+import { createReadStream, readdirSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import {
   createServer,
@@ -39,6 +39,31 @@ const contentTypes = new Map<string, string>([
   ['.woff', 'font/woff'],
   ['.woff2', 'font/woff2'],
 ]);
+
+// Each subdirectory of rootDir is a static frontend build. The primary
+// frontend is mounted at /, every other frontend at /<dir-name>. This keeps
+// adding a frontend to a zero-edit operation: stage its build under rootDir.
+export function discoverMountedSites(
+  rootDir: string,
+  primaryName: string,
+): MountedSite[] {
+  const entries = readdirSync(rootDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort((left, right) => left.localeCompare(right));
+
+  if (entries.length === 0) {
+    throw new Error(`No staged frontends found in ${rootDir}.`);
+  }
+
+  const primary = entries.includes(primaryName) ? primaryName : entries[0];
+
+  return entries.map((name) => ({
+    name,
+    basePath: name === primary ? '/' : `/${name}`,
+    rootDir: path.join(rootDir, name),
+  }));
+}
 
 export function createStaticHostServer(options: StaticHostOptions) {
   const sites = options.sites.map((site) => ({

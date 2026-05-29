@@ -17,23 +17,24 @@ const REMOVED_WORKSPACE_NAMES = [
 ];
 
 const KNOWN_START_SCRIPT =
-  'pnpm build && pnpm -r --parallel --filter @workspace-starter/web --filter @workspace-starter/api start';
+  'pnpm build && node scripts/build-frontends.mjs && pnpm -r --parallel --filter @workspace-starter/web-host --filter @workspace-starter/api start';
 const API_ONLY_START_SCRIPT =
   'pnpm build && pnpm --filter @workspace-starter/api start';
-const KNOWN_WEB_HOST_START_SCRIPT =
-  'pnpm build && pnpm -r --parallel --filter @workspace-starter/web-host --filter @workspace-starter/api start';
+const KNOWN_BUILD_FRONTENDS_SCRIPT = 'node scripts/build-frontends.mjs';
+const FRONTEND_BUILD_SCRIPT_FILE = 'scripts/build-frontends.mjs';
 
 const KNOWN_DOCKER_COMPOSE = `services:
-  web:
+  web-host:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: apps/web-host/Dockerfile
       args:
         PUBLIC_API_URL: \${PUBLIC_API_URL:-http://localhost:3001}
     environment:
       NODE_ENV: production
       PORT: 4321
       HOST: 0.0.0.0
+      PRIMARY_FRONTEND: \${PRIMARY_FRONTEND:-web}
     ports:
       - '\${WEB_PORT:-4321}:4321'
     depends_on:
@@ -65,56 +66,13 @@ const API_ONLY_DOCKER_COMPOSE = `services:
       - '\${API_PORT:-3001}:3001'
 `;
 
-const KNOWN_WEB_HOST_DOCKER_COMPOSE = `services:
-  web-host:
-    build:
-      context: .
-      dockerfile: apps/web-host/Dockerfile
-      args:
-        PUBLIC_API_URL: \${PUBLIC_API_URL:-http://localhost:3001}
-    environment:
-      NODE_ENV: production
-      PORT: 4321
-      HOST: 0.0.0.0
-      PRIMARY_WEB_DIST: /app/web
-      SECONDARY_BASE_PATH: /secondary
-      SECONDARY_WEB_DIST: /app/secondary-web
-    ports:
-      - '\${WEB_HOST_PORT:-4321}:4321'
-    depends_on:
-      api:
-        condition: service_started
-
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}
-    ports:
-      - '\${API_PORT:-3001}:3001'
-`;
-
 const DOCKER_COMPOSE_CHANGES = [
   {
     relativePath: 'docker-compose.yml',
     before: KNOWN_DOCKER_COMPOSE,
     after: API_ONLY_DOCKER_COMPOSE,
     action: 'replace',
-    staleTerms: ['apps/web/Dockerfile'],
-  },
-  {
-    relativePath: 'docker-compose.web-host.yml',
-    before: KNOWN_WEB_HOST_DOCKER_COMPOSE,
-    after: null,
-    action: 'delete',
-    staleTerms: [
-      'apps/web-host/Dockerfile',
-      'apps/secondary-web',
-      'SECONDARY_WEB_DIST',
-    ],
+    staleTerms: ['apps/web-host/Dockerfile'],
   },
 ];
 
@@ -163,6 +121,15 @@ function updateRootPackageForRemovedWebApps(rootPackage) {
       continue;
     }
 
+    if (
+      scriptName === 'build:frontends' &&
+      command === KNOWN_BUILD_FRONTENDS_SCRIPT
+    ) {
+      delete scripts['build:frontends'];
+      scriptChanges.push({ scriptName, action: 'delete', before: command });
+      continue;
+    }
+
     if (typeof command !== 'string' || !hasRemovedWorkspaceReference(command)) {
       continue;
     }
@@ -174,19 +141,6 @@ function updateRootPackageForRemovedWebApps(rootPackage) {
         action: 'replace',
         before: command,
         after: API_ONLY_START_SCRIPT,
-      });
-      continue;
-    }
-
-    if (
-      scriptName === 'start:web-host' &&
-      command === KNOWN_WEB_HOST_START_SCRIPT
-    ) {
-      delete scripts['start:web-host'];
-      scriptChanges.push({
-        scriptName,
-        action: 'delete',
-        before: command,
       });
       continue;
     }
@@ -287,6 +241,19 @@ export async function removeTemplateWebApps({ repoDir, dryRun = false }) {
   if (await pathExists(obsoleteTestPath)) {
     fileChanges.push({
       relativePath: OBSOLETE_TEST_FILE,
+      action: 'delete',
+    });
+  }
+
+  // The frontend build/stage helper only serves the bundled frontends, so it
+  // is removed alongside them.
+  const frontendBuildScriptPath = path.join(
+    repoDir,
+    FRONTEND_BUILD_SCRIPT_FILE,
+  );
+  if (await pathExists(frontendBuildScriptPath)) {
+    fileChanges.push({
+      relativePath: FRONTEND_BUILD_SCRIPT_FILE,
       action: 'delete',
     });
   }

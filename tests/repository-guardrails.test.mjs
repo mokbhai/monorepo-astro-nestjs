@@ -96,6 +96,40 @@ test('GitHub CI runs the same repository verification command', async () => {
   assert.match(workflow, /pnpm verify/);
 });
 
+test('build-and-publish workflow is gated on CI and publishes per-app images', async () => {
+  const workflow = await readText('.github/workflows/build-and-publish.yml');
+
+  // Deploy must never run on a red build: it triggers off CI completion and
+  // only proceeds when the CI run concluded successfully.
+  assert.match(workflow, /workflow_run:/);
+  assert.match(workflow, /workflows: \['CI'\]/);
+  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
+
+  // Images are discovered by convention (apps/<name>/Dockerfile) and pushed to
+  // a registry tagged by git SHA.
+  assert.match(workflow, /find apps -maxdepth 2 -name Dockerfile/);
+  assert.match(workflow, /packages: write/);
+  assert.match(workflow, /docker\/build-push-action/);
+  assert.match(workflow, /ghcr\.io/);
+
+  // The deploy step routes through the host-agnostic dispatcher.
+  assert.match(workflow, /node scripts\/deploy\/run\.mjs/);
+});
+
+test('deployment is convention-driven by apps/<name>/Dockerfile', async () => {
+  // Frontends are aggregated behind web-host, so they ship no individual
+  // Dockerfile; web-host and the api do.
+  assert.equal(
+    await stat(new URL('apps/web/Dockerfile', rootDir))
+      .then(() => true)
+      .catch(() => false),
+    false,
+    'apps/web should not have its own Dockerfile (it is bundled by web-host)',
+  );
+  await stat(new URL('apps/web-host/Dockerfile', rootDir));
+  await stat(new URL('apps/api/Dockerfile', rootDir));
+});
+
 test('workspace package manifests keep shared graph invariants', async () => {
   const packageFiles = [
     ...(await listPackageJsonFiles('apps')),

@@ -19,6 +19,13 @@ async function loadCleanupHelpers() {
   return import(moduleUrl.href);
 }
 
+async function loadDeployAdapterHelpers() {
+  const moduleUrl = pathToFileURL(
+    path.join(process.cwd(), 'scripts/lib/scaffold-deploy-adapter.mjs'),
+  );
+  return import(moduleUrl.href);
+}
+
 test('customizeRootPackageName updates only the root package name', async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'starter-setup-'));
 
@@ -59,6 +66,40 @@ test('validatePackageName rejects invalid npm package names', async () => {
   assert.equal(validatePackageName('valid-name').valid, true);
   assert.equal(validatePackageName('Invalid Name').valid, false);
   assert.equal(validatePackageName('@bad/scope').valid, false);
+});
+
+test('scaffoldDeployAdapter writes a stub adapter for a valid target', async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'starter-adapter-'));
+
+  try {
+    const { scaffoldDeployAdapter, validateDeployTarget } =
+      await loadDeployAdapterHelpers();
+
+    assert.equal(validateDeployTarget('cloud-run').valid, true);
+    assert.equal(validateDeployTarget('Bad Target').valid, false);
+
+    const result = await scaffoldDeployAdapter({
+      repoDir: tempDir,
+      target: 'cloud-run',
+    });
+
+    assert.equal(result.created, true);
+    assert.equal(result.relativePath, 'scripts/deploy/adapters/cloud-run.mjs');
+
+    const adapter = await readFile(
+      path.join(tempDir, 'scripts', 'deploy', 'adapters', 'cloud-run.mjs'),
+      'utf8',
+    );
+    assert.match(adapter, /export default async function deploy/);
+
+    const second = await scaffoldDeployAdapter({
+      repoDir: tempDir,
+      target: 'cloud-run',
+    });
+    assert.equal(second.created, false, 'existing adapter is not overwritten');
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });
 
 test('removeInstallerArtifacts deletes only installer files before commit', async () => {
