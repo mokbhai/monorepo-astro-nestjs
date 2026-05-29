@@ -17,6 +17,7 @@ catalog:
   react-dom: ^19.2.6
 
   # TypeScript
+  '@types/node': ^25.9.0
   typescript: ^6.0.3
 
   # tRPC

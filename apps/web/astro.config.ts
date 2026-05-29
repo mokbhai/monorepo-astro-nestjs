@@ -6,12 +6,24 @@ import tailwindcss from '@tailwindcss/vite';
 import { defaultLocale, locales } from './src/i18n/config';
 
 const i18nLocales = [...locales];
+const nodeEnv = (
+  globalThis as typeof globalThis & {
+    process?: { env?: Record<string, string | undefined> };
+  }
+).process?.env;
+const isGitHubPagesBuild = nodeEnv?.ASTRO_DEPLOY_TARGET === 'github-pages';
 
 export default defineConfig({
   output: 'static',
-  adapter: node({
-    mode: 'standalone',
-  }),
+  ...(isGitHubPagesBuild
+    ? {}
+    : {
+        adapter: node({
+          mode: 'standalone',
+        }),
+      }),
+  ...(nodeEnv?.ASTRO_SITE ? { site: nodeEnv.ASTRO_SITE } : {}),
+  ...(nodeEnv?.ASTRO_BASE ? { base: nodeEnv.ASTRO_BASE } : {}),
 
   i18n: {
     locales: i18nLocales,

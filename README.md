@@ -23,12 +23,14 @@ This template answers those questions with a small, working baseline. It is opin
 
 ```text
 apps/
-  web      Astro + React showcase app
-  api      NestJS + tRPC sample API
+  web            Astro + React showcase app
+  secondary-web  Second Astro app for deployment strategy testing
+  web-host       Node static host that serves both Astro builds
+  api            NestJS + tRPC sample API
 packages/
-  ui       Shared React UI components
-  types    Shared types and contracts
-  i18n     Shared localization helpers and validation
+  ui             Shared React UI components
+  types          Shared types and contracts
+  i18n           Shared localization helpers and validation
   config-typescript  Reusable tsconfig presets
 ```
 
@@ -76,6 +78,14 @@ pnpm start
 
 `pnpm start` builds the workspace first, then launches the web and API production servers together.
 
+To test the Node-hosted multi-Astro deployment strategy:
+
+```bash
+pnpm start:web-host
+```
+
+The Node host serves the primary Astro app at `/` and the secondary Astro app at `/secondary`.
+
 ## One-Command Bootstrap
 
 Create a fresh project from the starter:
@@ -100,7 +110,10 @@ The bootstrap flow:
 ```bash
 pnpm dev
 pnpm start
+pnpm start:web-host
 pnpm setup:starter
+pnpm template:remove-web-apps:dry-run
+pnpm template:remove-web-apps -- --yes
 pnpm build
 pnpm lint
 pnpm format
@@ -116,10 +129,21 @@ Useful workspace-focused commands:
 
 ```bash
 pnpm --filter @workspace-starter/web dev
+pnpm --filter @workspace-starter/secondary-web dev
+pnpm --filter @workspace-starter/web-host start
 pnpm --filter @workspace-starter/api dev
 pnpm --filter @workspace-starter/ui build
 pnpm --filter @workspace-starter/i18n test
 ```
+
+Useful Docker commands:
+
+```bash
+docker compose up --build
+docker compose -f docker-compose.web-host.yml up --build
+```
+
+The default compose file runs the Astro standalone web container and the API. The `docker-compose.web-host.yml` file runs the Node web host, which serves both Astro builds, plus the API.
 
 ## Quality Gates
 
@@ -138,6 +162,8 @@ pnpm hooks:install
 This starter uses the scope `@workspace-starter/*`. Replace it with your own project or organization scope in package manifests, imports, TypeScript path aliases, and docs examples.
 
 The included homepage is a showcase page. Once the repo structure is in place, replace it with your product UI and keep the workspace boundaries.
+
+If you want to start with your own frontend instead of the bundled web examples, use `pnpm template:remove-web-apps:dry-run` and then `pnpm template:remove-web-apps -- --yes`. That removes `apps/web`, `apps/secondary-web`, and `apps/web-host`, then rewrites the root production start script and stock Docker Compose files to API-only.
 
 ## Guides
 

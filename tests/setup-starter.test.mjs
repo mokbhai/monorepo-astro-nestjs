@@ -66,9 +66,16 @@ test('removeInstallerArtifacts deletes only installer files before commit', asyn
 
   try {
     await mkdir(path.join(tempDir, 'scripts', 'lib'), { recursive: true });
+    await mkdir(path.join(tempDir, 'scripts', 'template'), {
+      recursive: true,
+    });
     await writeFile(path.join(tempDir, 'package.json'), '{}\n');
     await writeFile(path.join(tempDir, 'README.md'), '# demo\n');
     await writeFile(path.join(tempDir, 'scripts', 'keep.mjs'), 'export {};\n');
+    await writeFile(
+      path.join(tempDir, 'scripts', 'template', 'remove-web-apps.mjs'),
+      'export {};\n',
+    );
     await writeFile(
       path.join(tempDir, 'scripts', 'bootstrap.sh'),
       '#!/usr/bin/env bash\n',
@@ -88,6 +95,9 @@ test('removeInstallerArtifacts deletes only installer files before commit', asyn
     const { access } = await import('node:fs/promises');
 
     await access(path.join(tempDir, 'scripts', 'keep.mjs'));
+    await access(
+      path.join(tempDir, 'scripts', 'template', 'remove-web-apps.mjs'),
+    );
     await assert.rejects(access(path.join(tempDir, 'scripts', 'bootstrap.sh')));
     await assert.rejects(
       access(path.join(tempDir, 'scripts', 'setup-starter.mjs')),

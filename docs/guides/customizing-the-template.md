@@ -30,3 +30,27 @@ Use [.env.example](../../.env.example) as the template source for local environm
 ## Replace The Showcase UI
 
 The starter homepage is intentionally a showcase page. Replace its sections with your own product UI once the monorepo structure and shared packages are in place.
+
+## Start With Your Own Web App
+
+If you want to keep the API, shared packages, Turbo wiring, CI, and Git hooks but remove the bundled web examples, run a dry run first:
+
+```bash
+pnpm template:remove-web-apps:dry-run
+```
+
+Then remove the bundled web workspaces:
+
+```bash
+pnpm template:remove-web-apps -- --yes
+```
+
+This removes:
+
+- `apps/web`
+- `apps/secondary-web`
+- `apps/web-host`
+
+It also rewrites the root `start` script to launch only `@workspace-starter/api`, removes `start:web-host`, rewrites the stock `docker-compose.yml` to API-only, removes the stock `docker-compose.web-host.yml`, removes the bundled web/api start-scripts test (`tests/root-start-scripts.test.mjs`), and drops that file from the root `test` script. The command refuses to run if a root script or Docker Compose file has custom references to one of the removed web workspaces, because those references need a human migration.
+
+After removal, create your own app under `apps/` and give it a workspace package name under the current scope, such as `@workspace-starter/web`. Make sure its scripts line up with the root Turbo tasks: `build`, `dev`, `typecheck`, `lint`, and `test` where applicable. Use `workspace:*` for internal packages and `catalog:` versions for shared dependencies already listed in `pnpm-workspace.yaml`.

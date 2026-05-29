@@ -43,6 +43,7 @@ Preserve deletion scope:
 - Never run the real installer against the working repository as a smoke test; use a temp clone or fixture.
 - `.git` removal must target only the cloned starter root.
 - Installer cleanup must remove only installer-owned artifacts. If adding non-installer files under `scripts/` or `scripts/lib/`, update cleanup logic and tests so those files survive.
+- User-facing template commands belong under `scripts/template/` and must survive `pnpm setup:starter`. Keep installer-only helpers under `scripts/lib/`, which cleanup removes.
 - Keep `scripts/` removal conditional on the directory being empty.
 - Account for stale starter-only docs or commands in the generated app, especially `README.md` bootstrap sections and `package.json` setup scripts.
 

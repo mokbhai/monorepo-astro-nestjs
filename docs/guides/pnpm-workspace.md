@@ -16,6 +16,8 @@ The workspace is defined in [pnpm-workspace.yaml](../../pnpm-workspace.yaml).
 ```bash
 pnpm install
 pnpm --filter @workspace-starter/web dev
+pnpm --filter @workspace-starter/secondary-web dev
+pnpm --filter @workspace-starter/web-host start
 pnpm --filter @workspace-starter/api dev
 pnpm --filter @workspace-starter/ui build
 pnpm --filter @workspace-starter/types typecheck

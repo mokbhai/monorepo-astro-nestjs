@@ -1,6 +1,6 @@
 ---
 name: jp-template-workspace-changes
-description: Use when adding, renaming, removing, moving, or wiring any apps/* or packages/* workspace in the JainParichay template-jp PNPM/Turbo monorepo, especially when package names, workspace:* links, pnpm catalogs, tsconfig presets, Turbo tasks, exports, README/docs commands, imports, or tests may need alignment.
+description: Use when adding, renaming, removing, moving, or wiring any apps/* or packages/* workspace in the JainParichay template-jp PNPM/Turbo monorepo, including removing bundled template web apps, especially when package names, workspace:* links, pnpm catalogs, tsconfig presets, Turbo tasks, exports, README/docs commands, imports, or tests may need alignment.
 ---
 
 # JP Template Workspace Changes
@@ -31,6 +31,7 @@ Do not assume a root `tsconfig.json` exists. If one is absent, do not create it 
 - Add or change `turbo.json` tasks only when matching workspace scripts exist or will exist. If a root script calls `turbo <task>`, confirm affected workspaces define that script or are intentionally skipped.
 - Update README and guides when workspace names, filters, app/package lists, ports, or setup/start commands change. Fix stale absolute doc links when touching nearby docs.
 - Update tests when invariants change. Existing root tests assert production start workspace filters; add focused tests for new cross-workspace invariants instead of relying only on manual review.
+- When a user wants to remove the bundled web examples before creating their own app, prefer the supported command path: `pnpm template:remove-web-apps:dry-run`, then `pnpm template:remove-web-apps -- --yes`. It removes `apps/web`, `apps/secondary-web`, and `apps/web-host`, rewrites the root production `start` script and stock Docker Compose files to API-only, and refuses custom stale script or compose references. If changing that behavior, update `scripts/template/remove-web-apps.mjs`, `tests/remove-template-web-apps.test.mjs`, docs, and root command guardrails together.
 
 ## Minimal Edit Sequence
 

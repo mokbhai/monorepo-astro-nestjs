@@ -41,6 +41,14 @@ test('root exposes repository guardrail scripts with pinned tooling', async () =
   assert.match(pkg.scripts?.['verify:fast'] ?? '', /git diff --check/);
   assert.match(pkg.scripts?.format ?? '', /prettier --write/);
   assert.match(pkg.scripts?.['format:check'] ?? '', /prettier --check/);
+  assert.equal(
+    pkg.scripts?.['template:remove-web-apps'],
+    'node scripts/template/remove-web-apps.mjs',
+  );
+  assert.equal(
+    pkg.scripts?.['template:remove-web-apps:dry-run'],
+    'node scripts/template/remove-web-apps.mjs --dry-run',
+  );
   assert.match(pkg.scripts?.verify ?? '', /pnpm verify:fast/);
   assert.match(pkg.scripts?.verify ?? '', /pnpm build/);
   assert.match(pkg.scripts?.verify ?? '', /pnpm test/);
