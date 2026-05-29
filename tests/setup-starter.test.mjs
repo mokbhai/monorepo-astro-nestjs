@@ -64,13 +64,32 @@ test('validatePackageName rejects invalid npm package names', async () => {
 test('removeInstallerArtifacts deletes only installer files before commit', async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'starter-cleanup-'));
 
+  const testScriptCommand =
+    'node --test tests/root-start-scripts.test.mjs tests/setup-starter.test.mjs tests/remove-template-web-apps.test.mjs tests/repository-guardrails.test.mjs && turbo test';
+
   try {
     await mkdir(path.join(tempDir, 'scripts', 'lib'), { recursive: true });
     await mkdir(path.join(tempDir, 'scripts', 'template'), {
       recursive: true,
     });
-    await writeFile(path.join(tempDir, 'package.json'), '{}\n');
+    await mkdir(path.join(tempDir, 'tests'), { recursive: true });
+    await writeFile(
+      path.join(tempDir, 'package.json'),
+      `${JSON.stringify(
+        {
+          name: 'demo',
+          private: true,
+          scripts: { test: testScriptCommand },
+        },
+        null,
+        2,
+      )}\n`,
+    );
     await writeFile(path.join(tempDir, 'README.md'), '# demo\n');
+    await writeFile(
+      path.join(tempDir, 'tests', 'setup-starter.test.mjs'),
+      'export {};\n',
+    );
     await writeFile(path.join(tempDir, 'scripts', 'keep.mjs'), 'export {};\n');
     await writeFile(
       path.join(tempDir, 'scripts', 'template', 'remove-web-apps.mjs'),
@@ -107,6 +126,30 @@ test('removeInstallerArtifacts deletes only installer files before commit', asyn
         path.join(tempDir, 'scripts', 'lib', 'customize-root-package.mjs'),
       ),
     );
+    await assert.rejects(
+      access(path.join(tempDir, 'tests', 'setup-starter.test.mjs')),
+    );
+
+    const updatedPackage = JSON.parse(
+      await readFile(path.join(tempDir, 'package.json'), 'utf8'),
+    );
+    assert.ok(
+      !updatedPackage.scripts.test.includes('tests/setup-starter.test.mjs'),
+    );
+    assert.ok(
+      updatedPackage.scripts.test.includes('tests/root-start-scripts.test.mjs'),
+    );
+    assert.ok(
+      updatedPackage.scripts.test.includes(
+        'tests/remove-template-web-apps.test.mjs',
+      ),
+    );
+    assert.ok(
+      updatedPackage.scripts.test.includes(
+        'tests/repository-guardrails.test.mjs',
+      ),
+    );
+    assert.ok(updatedPackage.scripts.test.includes('turbo test'));
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

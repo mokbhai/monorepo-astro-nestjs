@@ -21,23 +21,44 @@ export function createPrompter() {
   });
 }
 
+function isClosedStreamError(error) {
+  return (
+    error?.code === 'ERR_USE_AFTER_CLOSE' ||
+    /readline was closed/i.test(error?.message ?? '')
+  );
+}
+
 export async function promptText(prompter, label, defaultValue = '') {
   const suffix = defaultValue ? ` ${colorize('dim', `(${defaultValue})`)}` : '';
-  const answer = await prompter.question(
-    `${colorize('cyan', '?')} ${label}${suffix}: `,
-  );
+  let answer;
+  try {
+    answer = await prompter.question(
+      `${colorize('cyan', '?')} ${label}${suffix}: `,
+    );
+  } catch (error) {
+    if (isClosedStreamError(error)) {
+      return defaultValue;
+    }
+    throw error;
+  }
   return answer.trim() || defaultValue;
 }
 
 export async function promptConfirm(prompter, label, defaultValue = true) {
   const hint = defaultValue ? 'Y/n' : 'y/N';
-  const answer = (
-    await prompter.question(
+  let raw;
+  try {
+    raw = await prompter.question(
       `${colorize('cyan', '?')} ${label} ${colorize('dim', `(${hint})`)}: `,
-    )
-  )
-    .trim()
-    .toLowerCase();
+    );
+  } catch (error) {
+    if (isClosedStreamError(error)) {
+      return defaultValue;
+    }
+    throw error;
+  }
+
+  const answer = raw.trim().toLowerCase();
 
   if (!answer) {
     return defaultValue;
