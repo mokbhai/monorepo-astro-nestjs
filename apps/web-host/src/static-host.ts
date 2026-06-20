@@ -1,4 +1,4 @@
-import { createReadStream, readdirSync } from 'node:fs';
+import { createReadStream, existsSync, readdirSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import {
   createServer,
@@ -47,13 +47,17 @@ export function discoverMountedSites(
   rootDir: string,
   primaryName: string,
 ): MountedSite[] {
+  if (!existsSync(rootDir)) {
+    return [];
+  }
+
   const entries = readdirSync(rootDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort((left, right) => left.localeCompare(right));
 
   if (entries.length === 0) {
-    throw new Error(`No staged frontends found in ${rootDir}.`);
+    return [];
   }
 
   const primary = entries.includes(primaryName) ? primaryName : entries[0];
@@ -71,6 +75,15 @@ export function createStaticHostServer(options: StaticHostOptions) {
     basePath: normalizeBasePath(site.basePath),
     rootDir: path.resolve(site.rootDir),
   }));
+
+  if (sites.length === 0) {
+    console.log(
+      'No sites to serve. Stage frontends under sites/ or run scripts/build-frontends.mjs.',
+    );
+    return createServer((_request, response) => {
+      sendText(response, 404, 'Not found');
+    });
+  }
 
   if (!sites.some((site) => site.basePath === '/')) {
     throw new Error('Static host requires one site mounted at /.');
