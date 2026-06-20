@@ -1,4 +1,0 @@
-interface:
-  display_name: "JP Version Control Changesets"
-  short_description: "Guide JP git and changeset hygiene"
-  default_prompt: "Use $jp-version-control-changesets before finalizing a package-affecting change so git state, release notes, and validation are correct."

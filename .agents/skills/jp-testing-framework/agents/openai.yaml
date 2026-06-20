@@ -1,4 +1,0 @@
-interface:
-  display_name: "JP Testing Framework"
-  short_description: "Guide JP frontend and backend tests"
-  default_prompt: "Use $jp-testing-framework when adding frontend, backend, or end-to-end tests in template-jp."

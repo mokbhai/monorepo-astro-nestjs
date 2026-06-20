@@ -1,4 +1,0 @@
-interface:
-  display_name: "JP Dependency Upgrades"
-  short_description: "Guide JP dependency upgrades safely"
-  default_prompt: "Use $jp-template-upgrade-dependencies to upgrade package versions across catalogs and workspaces safely."

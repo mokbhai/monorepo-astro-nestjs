@@ -1,4 +1,0 @@
-interface:
-  display_name: "JP Template Scope Renamer"
-  short_description: "Rename JP package scopes safely"
-  default_prompt: "Use $jp-template-scope-renamer to rename legacy internal package scopes across the template without stale references."

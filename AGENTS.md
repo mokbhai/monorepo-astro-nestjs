@@ -14,7 +14,7 @@ Long-term maintainability is a core priority. Before adding new logic, check for
 
 ## Skill Maintenance
 
-Repo-local skills live in `.agents/skills`. When user prompts, repeated communication patterns, task friction, or review feedback reveal reusable guidance for future agents, use `jp-improve-skills-iteratively` to update or create the smallest relevant skill. Keep skill changes narrow, validate them with the skill's documented checks when available, and mention the skill update in the final handoff. Do not turn one-off preferences into broad rules.
+Repo-local skills live in `.agents/skills`. When user prompts, repeated communication patterns, task friction, or review feedback reveal reusable guidance for future agents, use `improve-skills-iteratively` to update or create the smallest relevant skill. Keep skill changes narrow, validate them with the skill's documented checks when available, and mention the skill update in the final handoff. Do not turn one-off preferences into broad rules.
 
 ## Project Structure & Module Organization
 
