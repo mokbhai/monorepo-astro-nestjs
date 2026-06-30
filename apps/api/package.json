@@ -21,6 +21,7 @@
     "@nestjs/core": "^11.1.21",
     "@nestjs/platform-fastify": "^11.1.21",
     "@trpc/server": "catalog:",
+    "@workspace-starter/db": "workspace:*",
     "@workspace-starter/types": "workspace:*",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",

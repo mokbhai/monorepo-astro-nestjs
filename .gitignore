@@ -8,6 +8,8 @@ node_modules
 
 # Build outputs
 dist
+packages/db/src/generated
+graphify-out
 .next
 .astro
 out

@@ -1,17 +1,34 @@
+import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { router, publicProcedure, protectedProcedure } from './trpc';
 
+const userSelect = {
+  id: true,
+  name: true,
+  email: true,
+} as const;
+
 const usersRouter = router({
-  list: publicProcedure.query(async () => {
-    // TODO: replace with real DB call
-    return [{ id: '1', name: 'Mokshit Jain', email: 'm@example.com' }];
+  list: publicProcedure.query(async ({ ctx }) => {
+    return ctx.db.user.findMany({
+      select: userSelect,
+      orderBy: { createdAt: 'asc' },
+    });
   }),
 
   getById: publicProcedure
     .input(z.object({ id: z.string() }))
-    .query(async ({ input }) => {
-      // TODO: replace with real DB call
-      return { id: input.id, name: 'Mokshit Jain', email: 'm@example.com' };
+    .query(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { id: input.id },
+        select: userSelect,
+      });
+
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+
+      return user;
     }),
 
   create: protectedProcedure
@@ -21,9 +38,11 @@ const usersRouter = router({
         email: z.string().email(),
       }),
     )
-    .mutation(async ({ input }) => {
-      // TODO: replace with real DB call
-      return { id: crypto.randomUUID(), ...input };
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.user.create({
+        data: input,
+        select: userSelect,
+      });
     }),
 });
 
