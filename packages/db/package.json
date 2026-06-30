@@ -16,9 +16,9 @@
     "prisma"
   ],
   "scripts": {
-    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "build": "prisma generate && rm -rf dist && tsc -p tsconfig.build.json",
     "typecheck": "pnpm run build",
-    "lint": "eslint \"src/**/*.ts\" \"prisma.config.ts\" --ignore-pattern \"src/generated/**\"",
+    "lint": "eslint \"src/**/*.ts\" \"prisma.config.ts\"",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
