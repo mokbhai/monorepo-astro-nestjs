@@ -9,13 +9,21 @@
     "start": "astro preview --host 127.0.0.1 --port 4322",
     "preview": "astro preview",
     "typecheck": "astro check",
-    "lint": "eslint \"astro.config.ts\""
+    "lint": "eslint \"astro.config.ts\" \"capacitor.config.ts\"",
+    "capacitor:sync": "node ../../scripts/capacitor/sync.mjs secondary-web",
+    "capacitor:open:android": "pnpm exec cap open android",
+    "capacitor:open:ios": "pnpm exec cap open ios"
   },
   "dependencies": {
+    "@capacitor/android": "catalog:",
+    "@capacitor/app": "catalog:",
+    "@capacitor/core": "catalog:",
+    "@capacitor/ios": "catalog:",
     "astro": "^6.3.5"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
+    "@capacitor/cli": "catalog:",
     "@workspace-starter/config-typescript": "workspace:*",
     "eslint": "catalog:dev-tools",
     "typescript": "catalog:"

@@ -7,3 +7,8 @@ dist
 coverage
 pnpm-lock.yaml
 .orchestrate
+apps/*/android/app/src/main/assets/public
+apps/*/android/app/src/main/assets/capacitor.config.json
+apps/*/android/app/src/main/assets/capacitor.plugins.json
+apps/*/android/app/src/main/res/xml/config.xml
+apps/*/android/capacitor-cordova-android-plugins

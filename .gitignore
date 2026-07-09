@@ -8,7 +8,6 @@ node_modules
 
 # Build outputs
 dist
-packages/db/src/generated
 graphify-out
 .next
 .astro
@@ -45,5 +44,10 @@ Thumbs.db
 coverage
 .impeccable.md
 
-# Orchestration scratch
-.orchestrate
+# Capacitor native build outputs
+apps/*/android/.gradle
+apps/*/android/**/build
+apps/*/android/local.properties
+apps/*/ios/App/Pods
+apps/*/ios/App/build
+apps/*/ios/DerivedData

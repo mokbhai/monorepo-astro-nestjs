@@ -9,11 +9,18 @@
     "start": "astro preview --host 127.0.0.1",
     "preview": "astro preview",
     "typecheck": "astro check",
-    "lint": "eslint \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"vitest.config.ts\"",
-    "test": "pnpm --filter @workspace-starter/i18n build && node --test tests/*.test.mjs && vitest run"
+    "lint": "eslint \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"vitest.config.ts\" \"capacitor.config.ts\"",
+    "test": "pnpm --filter @workspace-starter/i18n build && node --test tests/*.test.mjs && vitest run",
+    "capacitor:sync": "node ../../scripts/capacitor/sync.mjs web",
+    "capacitor:open:android": "pnpm exec cap open android",
+    "capacitor:open:ios": "pnpm exec cap open ios"
   },
   "dependencies": {
     "@astrojs/node": "^10.1.1",
+    "@capacitor/android": "catalog:",
+    "@capacitor/app": "catalog:",
+    "@capacitor/core": "catalog:",
+    "@capacitor/ios": "catalog:",
     "@tanstack/react-query": "^5.100.11",
     "@trpc/client": "catalog:",
     "@trpc/react-query": "catalog:",
@@ -27,6 +34,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
     "@astrojs/react": "^5.0.5",
+    "@capacitor/cli": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",

@@ -1,0 +1,165 @@
+name: Capacitor iOS Release
+
+# Manual workflow to build Capacitor iOS archives from Astro frontends.
+# Requires a macOS runner and Apple signing secrets for App Store distribution.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Astro frontend app name
+        required: true
+        type: choice
+        options:
+          - web
+          - secondary-web
+      build_type:
+        description: iOS build variant
+        required: true
+        type: choice
+        options:
+          - debug
+          - release
+      public_api_url:
+        description: API URL baked into the mobile web build
+        required: false
+        type: string
+
+concurrency:
+  group: capacitor-ios-${{ github.ref }}-${{ inputs.app }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build iOS (${{ inputs.app }}, ${{ inputs.build_type }})
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+
+      - name: Install compatible Corepack
+        run: npm install --global corepack@0.34.2
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Activate pinned pnpm
+        run: corepack prepare pnpm@11.1.3 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync Capacitor web bundle
+        env:
+          PUBLIC_API_URL: ${{ inputs.public_api_url }}
+        run: node scripts/capacitor/sync.mjs ${{ inputs.app }}
+
+      - name: Ensure iOS native project
+        run: node scripts/capacitor/init-platforms.mjs ${{ inputs.app }} ios
+
+      - name: Install CocoaPods dependencies
+        working-directory: apps/${{ inputs.app }}/ios/App
+        run: pod install
+
+      - name: Import Apple signing certificate
+        if: ${{ inputs.build_type == 'release' }}
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE_BASE64" ]; then
+            echo "Release builds require APPLE_CERTIFICATE_BASE64 and related signing secrets."
+            exit 1
+          fi
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Install provisioning profile
+        if: ${{ inputs.build_type == 'release' }}
+        env:
+          APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          PROFILE_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          echo "$APPLE_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Build debug simulator app
+        if: ${{ inputs.build_type == 'debug' }}
+        working-directory: apps/${{ inputs.app }}/ios/App
+        run: |
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            build
+
+      - name: Archive release build
+        if: ${{ inputs.build_type == 'release' }}
+        working-directory: apps/${{ inputs.app }}/ios/App
+        run: |
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath build/App.xcarchive \
+            archive
+
+      - name: Export release IPA
+        if: ${{ inputs.build_type == 'release' }}
+        env:
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        working-directory: apps/${{ inputs.app }}/ios/App
+        run: |
+          cat > ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string>${APPLE_TEAM_ID}</string>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: Upload debug simulator app
+        if: ${{ inputs.build_type == 'debug' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app }}-ios-debug-simulator
+          path: apps/${{ inputs.app }}/ios/App/build/Build/Products/Debug-iphonesimulator/App.app
+          if-no-files-found: error
+
+      - name: Upload release IPA
+        if: ${{ inputs.build_type == 'release' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app }}-ios-release-ipa
+          path: apps/${{ inputs.app }}/ios/App/build/export/*.ipa
+          if-no-files-found: error

@@ -18,6 +18,9 @@ Frontends and backends are different problems, so they deploy differently:
 A reverse proxy / ingress in front routes hostnames or paths to the web-host
 image and to each backend.
 
+See also [Capacitor mobile apps](./capacitor.md) for wrapping frontends as
+native Android and iOS apps.
+
 ```
 proxy ── /, /admin, … ─► web-host image (all frontends)
      ├── api.*          ─► api image
