@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   access,
+  copyFile,
   mkdir,
   mkdtemp,
   readFile,
@@ -12,51 +13,11 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 
+const REPO_DIR = process.cwd();
+const STOCK_DOCKER_COMPOSE_PATH = path.join(REPO_DIR, 'docker-compose.yml');
+
 const KNOWN_START_SCRIPT =
   'pnpm build && node scripts/build-frontends.mjs && pnpm -r --parallel --filter @workspace-starter/web-host --filter @workspace-starter/api start';
-
-const WEB_HOST_DOCKER_COMPOSE = `services:
-  web-host:
-    build:
-      context: .
-      dockerfile: apps/web-host/Dockerfile
-      args:
-        PUBLIC_API_URL: \${PUBLIC_API_URL:-http://localhost:3001}
-    environment:
-      NODE_ENV: production
-      PORT: 4321
-      HOST: 0.0.0.0
-      PRIMARY_FRONTEND: \${PRIMARY_FRONTEND:-web}
-    ports:
-      - '\${WEB_PORT:-4321}:4321'
-    depends_on:
-      api:
-        condition: service_started
-
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}
-    ports:
-      - '\${API_PORT:-3001}:3001'
-`;
-
-const API_ONLY_DOCKER_COMPOSE = `services:
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}
-    ports:
-      - '\${API_PORT:-3001}:3001'
-`;
 
 async function loadWebAppRemovalHelpers() {
   const moduleUrl = pathToFileURL(
@@ -104,9 +65,9 @@ async function createFixture() {
     });
   }
 
-  await writeFile(
+  await copyFile(
+    STOCK_DOCKER_COMPOSE_PATH,
     path.join(tempDir, 'docker-compose.yml'),
-    WEB_HOST_DOCKER_COMPOSE,
   );
 
   return tempDir;
@@ -117,6 +78,16 @@ test('removeTemplateWebApps removes bundled web apps and rewrites root scripts',
 
   try {
     const { removeTemplateWebApps } = await loadWebAppRemovalHelpers();
+
+    const stockDockerCompose = await readFile(
+      path.join(tempDir, 'docker-compose.yml'),
+      'utf8',
+    );
+    const webHostStart = stockDockerCompose.indexOf('  web-host:\n');
+    const apiBoundary = stockDockerCompose.indexOf('\n  api:\n', webHostStart);
+    assert.notEqual(webHostStart, -1);
+    assert.notEqual(apiBoundary, -1);
+    const apiStart = apiBoundary + 1;
 
     const result = await removeTemplateWebApps({ repoDir: tempDir });
 
@@ -171,7 +142,7 @@ test('removeTemplateWebApps removes bundled web apps and rewrites root scripts',
 
     assert.equal(
       await readFile(path.join(tempDir, 'docker-compose.yml'), 'utf8'),
-      API_ONLY_DOCKER_COMPOSE,
+      `${stockDockerCompose.slice(0, webHostStart)}${stockDockerCompose.slice(apiStart)}`,
     );
   } finally {
     await rm(tempDir, { recursive: true, force: true });
@@ -220,6 +191,58 @@ test('removeTemplateWebApps dry run leaves files unchanged', async () => {
   }
 });
 
+test('removeTemplateWebApps dry run succeeds on the real repository without mutation', async () => {
+  const { removeTemplateWebApps } = await loadWebAppRemovalHelpers();
+  const packagePath = path.join(REPO_DIR, 'package.json');
+  const before = {
+    packageJson: await readFile(packagePath, 'utf8'),
+    dockerCompose: await readFile(STOCK_DOCKER_COMPOSE_PATH, 'utf8'),
+    buildFrontends: await readFile(
+      path.join(REPO_DIR, 'scripts', 'build-frontends.mjs'),
+      'utf8',
+    ),
+    rootStartTest: await readFile(
+      path.join(REPO_DIR, 'tests', 'root-start-scripts.test.mjs'),
+      'utf8',
+    ),
+  };
+
+  const result = await removeTemplateWebApps({
+    repoDir: REPO_DIR,
+    dryRun: true,
+  });
+
+  assert.equal(result.dryRun, true);
+  assert.deepEqual(
+    result.fileChanges.find(
+      ({ relativePath }) => relativePath === 'docker-compose.yml',
+    ),
+    { relativePath: 'docker-compose.yml', action: 'replace' },
+  );
+  assert.equal(await readFile(packagePath, 'utf8'), before.packageJson);
+  assert.equal(
+    await readFile(STOCK_DOCKER_COMPOSE_PATH, 'utf8'),
+    before.dockerCompose,
+  );
+  assert.equal(
+    await readFile(
+      path.join(REPO_DIR, 'scripts', 'build-frontends.mjs'),
+      'utf8',
+    ),
+    before.buildFrontends,
+  );
+  assert.equal(
+    await readFile(
+      path.join(REPO_DIR, 'tests', 'root-start-scripts.test.mjs'),
+      'utf8',
+    ),
+    before.rootStartTest,
+  );
+  await access(path.join(REPO_DIR, 'apps', 'web'));
+  await access(path.join(REPO_DIR, 'apps', 'secondary-web'));
+  await access(path.join(REPO_DIR, 'apps', 'web-host'));
+});
+
 test('removeTemplateWebApps refuses custom root scripts that reference removed web apps', async () => {
   const tempDir = await createFixture();
 
@@ -246,23 +269,28 @@ test('removeTemplateWebApps refuses custom Docker compose files that reference r
   const tempDir = await createFixture();
 
   try {
+    const composePath = path.join(tempDir, 'docker-compose.yml');
+    const stockCompose = await readFile(composePath, 'utf8');
     await writeFile(
-      path.join(tempDir, 'docker-compose.yml'),
-      `services:
-  custom-host:
-    build:
-      context: .
-      dockerfile: apps/web-host/Dockerfile
-`,
+      composePath,
+      `${stockCompose}\nx-custom-web-host-ref: apps/web-host/Dockerfile\n`,
     );
 
     const { removeTemplateWebApps } = await loadWebAppRemovalHelpers();
+    const packagePath = path.join(tempDir, 'package.json');
+    const packageBefore = await readFile(packagePath, 'utf8');
+    const composeBefore = await readFile(composePath, 'utf8');
 
     await assert.rejects(
       () => removeTemplateWebApps({ repoDir: tempDir }),
       /Refusing to remove web apps/,
     );
+    assert.equal(await readFile(packagePath, 'utf8'), packageBefore);
+    assert.equal(await readFile(composePath, 'utf8'), composeBefore);
     await access(path.join(tempDir, 'apps', 'web', 'package.json'));
+    await access(path.join(tempDir, 'apps', 'web-host', 'package.json'));
+    await access(path.join(tempDir, 'scripts', 'build-frontends.mjs'));
+    await access(path.join(tempDir, 'tests', 'root-start-scripts.test.mjs'));
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
