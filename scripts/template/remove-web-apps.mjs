@@ -23,8 +23,25 @@ const API_ONLY_START_SCRIPT =
 const KNOWN_BUILD_FRONTENDS_SCRIPT = 'node scripts/build-frontends.mjs';
 const FRONTEND_BUILD_SCRIPT_FILE = 'scripts/build-frontends.mjs';
 
-const KNOWN_DOCKER_COMPOSE = `services:
-  web-host:
+const POSTGRES_DOCKER_COMPOSE_SERVICE = `  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: template_jp
+    ports:
+      - '\${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d template_jp']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+`;
+
+const WEB_HOST_DOCKER_COMPOSE_SERVICE = `  web-host:
     build:
       context: .
       dockerfile: apps/web-host/Dockerfile
@@ -41,20 +58,9 @@ const KNOWN_DOCKER_COMPOSE = `services:
       api:
         condition: service_started
 
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}
-    ports:
-      - '\${API_PORT:-3001}:3001'
 `;
 
-const API_ONLY_DOCKER_COMPOSE = `services:
-  api:
+const API_DOCKER_COMPOSE_SERVICE = `  api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -62,15 +68,30 @@ const API_ONLY_DOCKER_COMPOSE = `services:
       NODE_ENV: production
       PORT: 3001
       CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/template_jp?schema=public
     ports:
       - '\${API_PORT:-3001}:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
 `;
+
+const POSTGRES_DOCKER_COMPOSE_VOLUME = `
+volumes:
+  postgres_data:
+`;
+
+const KNOWN_DOCKER_COMPOSE = `services:
+${POSTGRES_DOCKER_COMPOSE_SERVICE}${WEB_HOST_DOCKER_COMPOSE_SERVICE}${API_DOCKER_COMPOSE_SERVICE}${POSTGRES_DOCKER_COMPOSE_VOLUME}`;
+
+const API_AND_POSTGRES_DOCKER_COMPOSE = `services:
+${POSTGRES_DOCKER_COMPOSE_SERVICE}${API_DOCKER_COMPOSE_SERVICE}${POSTGRES_DOCKER_COMPOSE_VOLUME}`;
 
 const DOCKER_COMPOSE_CHANGES = [
   {
     relativePath: 'docker-compose.yml',
     before: KNOWN_DOCKER_COMPOSE,
-    after: API_ONLY_DOCKER_COMPOSE,
+    after: API_AND_POSTGRES_DOCKER_COMPOSE,
     action: 'replace',
     staleTerms: ['apps/web-host/Dockerfile'],
   },

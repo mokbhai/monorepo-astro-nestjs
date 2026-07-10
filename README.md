@@ -156,7 +156,7 @@ This starter uses the scope `@workspace-starter/*`. Replace it with your own pro
 
 The included homepage is a showcase page. Once the repo structure is in place, replace it with your product UI and keep the workspace boundaries.
 
-If you want to start with your own frontend instead of the bundled web examples, use `pnpm template:remove-web-apps:dry-run` and then `pnpm template:remove-web-apps -- --yes`. That removes `apps/web`, `apps/secondary-web`, and `apps/web-host`, then rewrites the root production start script and stock Docker Compose files to API-only.
+If you want to start with your own frontend instead of the bundled web examples, use `pnpm template:remove-web-apps:dry-run` and then `pnpm template:remove-web-apps -- --yes`. That removes `apps/web`, `apps/secondary-web`, and `apps/web-host`, then rewrites the root production start script and stock Docker Compose file to keep the API and PostgreSQL while removing the web host.
 
 ## Guides
 
