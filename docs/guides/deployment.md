@@ -18,6 +18,12 @@ Frontends and backends are different problems, so they deploy differently:
 A reverse proxy / ingress in front routes hostnames or paths to the web-host
 image and to each backend.
 
+The API image applies committed database migrations before every process start.
+Its entrypoint runs `prisma migrate deploy` and starts `node dist/main` only
+after migration succeeds. A migration failure exits the container without
+starting the API (fail closed). Set `DATABASE_URL` for the target database and
+ensure only compatible API revisions start concurrently during a rollout.
+
 ```
 proxy ── /, /admin, … ─► web-host image (all frontends)
      ├── api.*          ─► api image

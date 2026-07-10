@@ -28,9 +28,10 @@ ENV NODE_ENV=production
 ENV PORT=3001
 
 COPY --from=build --chown=node:node /app /app
+COPY --chown=node:node --chmod=755 apps/api/docker-entrypoint.sh /usr/local/bin/api-entrypoint
 
 USER node
 
 EXPOSE 3001
 
-CMD ["node", "dist/main"]
+CMD ["/usr/local/bin/api-entrypoint"]
