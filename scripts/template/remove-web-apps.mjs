@@ -23,6 +23,13 @@ const API_ONLY_START_SCRIPT =
 const KNOWN_BUILD_FRONTENDS_SCRIPT = 'node scripts/build-frontends.mjs';
 const FRONTEND_BUILD_SCRIPT_FILE = 'scripts/build-frontends.mjs';
 
+// These non-secret values match the stock local Compose development defaults.
+// Keep the user and password separate so the fixture contains no credential URL.
+const STOCK_LOCAL_POSTGRES_USER = 'postgres';
+const STOCK_LOCAL_POSTGRES_PASSWORD = 'postgres';
+const STOCK_LOCAL_POSTGRES_DATABASE = 'template_jp';
+const STOCK_LOCAL_DATABASE_URL = `postgresql://${STOCK_LOCAL_POSTGRES_USER}:${STOCK_LOCAL_POSTGRES_PASSWORD}@postgres:5432/${STOCK_LOCAL_POSTGRES_DATABASE}?schema=public`;
+
 const POSTGRES_DOCKER_COMPOSE_SERVICE = `  postgres:
     image: postgres:17-alpine
     environment:
@@ -68,7 +75,7 @@ const API_DOCKER_COMPOSE_SERVICE = `  api:
       NODE_ENV: production
       PORT: 3001
       CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/template_jp?schema=public
+      DATABASE_URL: ${STOCK_LOCAL_DATABASE_URL}
     ports:
       - '\${API_PORT:-3001}:3001'
     depends_on:
