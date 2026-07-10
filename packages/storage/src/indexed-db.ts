@@ -1,8 +1,12 @@
-export type IndexedDbKey = string | number | Date | ArrayBuffer | DataView<ArrayBuffer> | IndexedDbKey[];
+export type IndexedDbKey =
+  | string
+  | number
+  | Date
+  | ArrayBuffer
+  | DataView<ArrayBuffer>
+  | IndexedDbKey[];
 
-export type IndexedDbValue = boolean | number | string | null | IndexedDbValue[] | {
-  [key: string]: IndexedDbValue;
-};
+export type IndexedDbValue = unknown;
 
 export interface CreateIndexedDbStoreOptions {
   databaseName: string;
@@ -28,7 +32,9 @@ function getIndexedDb(): IDBFactory {
   return globalThis.indexedDB;
 }
 
-function openDatabase(options: Required<CreateIndexedDbStoreOptions>): Promise<IDBDatabase> {
+function openDatabase(
+  options: Required<CreateIndexedDbStoreOptions>,
+): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = getIndexedDb().open(options.databaseName, options.version);
 
@@ -49,7 +55,11 @@ function openDatabase(options: Required<CreateIndexedDbStoreOptions>): Promise<I
 
       if (!database.objectStoreNames.contains(options.storeName)) {
         database.close();
-        reject(new Error(`IndexedDB object store "${options.storeName}" does not exist.`));
+        reject(
+          new Error(
+            `IndexedDB object store "${options.storeName}" does not exist.`,
+          ),
+        );
         return;
       }
 
@@ -66,44 +76,57 @@ async function runTransaction<T>(
   const database = await openDatabase(options);
 
   return new Promise((resolve, reject) => {
-    const transaction = database.transaction(options.storeName, mode);
-    const store = transaction.objectStore(options.storeName);
-    const request = callback(store);
+    let request: IDBRequest<T>;
     let result: T;
 
-    request.onsuccess = () => {
-      result = request.result;
-    };
+    try {
+      const transaction = database.transaction(options.storeName, mode);
+      const store = transaction.objectStore(options.storeName);
+      request = callback(store);
 
-    request.onerror = () => {
-      reject(request.error ?? new Error('IndexedDB request failed.'));
-    };
+      request.onsuccess = () => {
+        result = request.result;
+      };
 
-    transaction.oncomplete = () => {
+      transaction.oncomplete = () => {
+        database.close();
+        resolve(result);
+      };
+
+      transaction.onerror = () => {
+        database.close();
+        reject(transaction.error ?? new Error('IndexedDB transaction failed.'));
+      };
+
+      transaction.onabort = () => {
+        database.close();
+        reject(
+          transaction.error ?? new Error('IndexedDB transaction aborted.'),
+        );
+      };
+    } catch (error) {
       database.close();
-      resolve(result);
-    };
-
-    transaction.onerror = () => {
-      database.close();
-      reject(transaction.error ?? new Error('IndexedDB transaction failed.'));
-    };
-
-    transaction.onabort = () => {
-      database.close();
-      reject(transaction.error ?? new Error('IndexedDB transaction aborted.'));
-    };
+      reject(
+        error instanceof Error
+          ? error
+          : new Error('IndexedDB transaction setup failed.'),
+      );
+    }
   });
 }
 
-function normalizeOptions(options: CreateIndexedDbStoreOptions): Required<CreateIndexedDbStoreOptions> {
+function normalizeOptions(
+  options: CreateIndexedDbStoreOptions,
+): Required<CreateIndexedDbStoreOptions> {
   return {
     version: 1,
     ...options,
   };
 }
 
-export function createIndexedDbStore(options: CreateIndexedDbStoreOptions): IndexedDbStore {
+export function createIndexedDbStore(
+  options: CreateIndexedDbStoreOptions,
+): IndexedDbStore {
   const normalizedOptions = normalizeOptions(options);
 
   return {
@@ -123,7 +146,11 @@ export async function getIndexedDbValue<T = IndexedDbValue>(
   options: CreateIndexedDbStoreOptions,
   key: IndexedDbKey,
 ): Promise<T | undefined> {
-  return runTransaction<T | undefined>(normalizeOptions(options), 'readonly', (store) => store.get(key));
+  return runTransaction<T | undefined>(
+    normalizeOptions(options),
+    'readonly',
+    (store) => store.get(key),
+  );
 }
 
 export async function setIndexedDbValue<T = IndexedDbValue>(
@@ -131,14 +158,18 @@ export async function setIndexedDbValue<T = IndexedDbValue>(
   key: IndexedDbKey,
   value: T,
 ): Promise<void> {
-  await runTransaction(normalizeOptions(options), 'readwrite', (store) => store.put(value, key));
+  await runTransaction(normalizeOptions(options), 'readwrite', (store) =>
+    store.put(value, key),
+  );
 }
 
 export async function deleteIndexedDbValue(
   options: CreateIndexedDbStoreOptions,
   key: IndexedDbKey,
 ): Promise<void> {
-  await runTransaction<undefined>(normalizeOptions(options), 'readwrite', (store) =>
-    store.delete(key),
+  await runTransaction<undefined>(
+    normalizeOptions(options),
+    'readwrite',
+    (store) => store.delete(key),
   );
 }

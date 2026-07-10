@@ -39,21 +39,46 @@ class MemoryStorage {
 test('reads and writes JSON values in localStorage', () => {
   const storage = new MemoryStorage();
 
-  writeLocalStorage('settings', { theme: 'dark' }, { storage });
+  assert.equal(
+    writeLocalStorage('settings', { theme: 'dark' }, { storage }),
+    true,
+  );
 
-  assert.deepEqual(readLocalStorage('settings', { theme: 'light' }, { storage }), {
-    theme: 'dark',
-  });
+  assert.deepEqual(
+    readLocalStorage('settings', { theme: 'light' }, { storage }),
+    {
+      theme: 'dark',
+    },
+  );
 });
 
 test('returns fallback when localStorage key is missing or invalid', () => {
   const storage = new MemoryStorage();
 
-  assert.equal(readLocalStorage('missing', 'fallback', { storage }), 'fallback');
+  assert.equal(
+    readLocalStorage('missing', 'fallback', { storage }),
+    'fallback',
+  );
 
   storage.setItem('invalid', '{');
 
-  assert.equal(readLocalStorage('invalid', 'fallback', { storage }), 'fallback');
+  assert.equal(
+    readLocalStorage('invalid', 'fallback', { storage }),
+    'fallback',
+  );
+});
+
+test('returns false when localStorage writes fail', () => {
+  const storage = new MemoryStorage();
+
+  storage.setItem = () => {
+    throw new Error('storage unavailable');
+  };
+
+  assert.equal(
+    writeLocalStorage('settings', { theme: 'dark' }, { storage }),
+    false,
+  );
 });
 
 test('supports custom localStorage serializers', () => {
@@ -72,7 +97,7 @@ test('creates localStorage adapters with injected storage', () => {
   const storage = new MemoryStorage();
   const adapter = createLocalStorageAdapter(storage);
 
-  adapter.write('enabled', true);
+  assert.equal(adapter.write('enabled', true), true);
 
   assert.equal(adapter.read('enabled', false), true);
 
@@ -84,7 +109,7 @@ test('creates localStorage adapters with injected storage', () => {
 test('removes localStorage values', () => {
   const storage = new MemoryStorage();
 
-  writeLocalStorage('temporary', true, { storage });
+  assert.equal(writeLocalStorage('temporary', true, { storage }), true);
   removeLocalStorage('temporary', storage);
 
   assert.equal(readLocalStorage('temporary', false, { storage }), false);

@@ -15,7 +15,11 @@ export interface WriteLocalStorageOptions<T> {
 
 export interface LocalStorageAdapter {
   read<T>(key: string, fallback: T, options?: ReadLocalStorageOptions<T>): T;
-  write<T>(key: string, value: T, options?: WriteLocalStorageOptions<T>): void;
+  write<T>(
+    key: string,
+    value: T,
+    options?: WriteLocalStorageOptions<T>,
+  ): boolean;
   remove(key: string): void;
 }
 
@@ -70,16 +74,21 @@ export function writeLocalStorage<T>(
   key: string,
   value: T,
   options: WriteLocalStorageOptions<T> = {},
-): void {
+): boolean {
   const storage = getLocalStorage(options.storage);
 
   if (!storage) {
-    return;
+    return false;
   }
 
-  const serializer = options.serializer ?? jsonSerializer;
+  try {
+    const serializer = options.serializer ?? jsonSerializer;
 
-  storage.setItem(key, serializer.stringify(value));
+    storage.setItem(key, serializer.stringify(value));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function removeLocalStorage(key: string, storage?: Storage): void {
@@ -88,7 +97,9 @@ export function removeLocalStorage(key: string, storage?: Storage): void {
   localStorage?.removeItem(key);
 }
 
-export function createLocalStorageAdapter(storage?: Storage): LocalStorageAdapter {
+export function createLocalStorageAdapter(
+  storage?: Storage,
+): LocalStorageAdapter {
   return {
     read(key, fallback, options = {}) {
       return readLocalStorage(key, fallback, {
@@ -97,7 +108,7 @@ export function createLocalStorageAdapter(storage?: Storage): LocalStorageAdapte
       });
     },
     write(key, value, options = {}) {
-      writeLocalStorage(key, value, {
+      return writeLocalStorage(key, value, {
         ...options,
         storage: options.storage ?? storage,
       });

@@ -5,7 +5,10 @@ Browser storage helpers for frontend code.
 ## localStorage
 
 ```ts
-import { readLocalStorage, writeLocalStorage } from '@workspace-starter/storage';
+import {
+  readLocalStorage,
+  writeLocalStorage,
+} from '@workspace-starter/storage';
 
 writeLocalStorage('theme', 'dark');
 const theme = readLocalStorage('theme', 'light');
