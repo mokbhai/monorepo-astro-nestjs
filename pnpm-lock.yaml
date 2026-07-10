@@ -215,6 +215,9 @@ importers:
       '@workspace-starter/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@workspace-starter/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       '@workspace-starter/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -351,6 +354,18 @@ importers:
         version: 6.0.3
 
   packages/i18n:
+    devDependencies:
+      '@workspace-starter/config-typescript':
+        specifier: workspace:*
+        version: link:../config-typescript
+      eslint:
+        specifier: catalog:dev-tools
+        version: 10.4.0(jiti@2.7.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
+  packages/storage:
     devDependencies:
       '@workspace-starter/config-typescript':
         specifier: workspace:*
