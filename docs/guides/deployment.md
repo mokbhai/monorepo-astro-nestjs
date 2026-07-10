@@ -59,7 +59,9 @@ want affected-only builds can filter the discover matrix.
 ## The deploy contract
 
 `scripts/deploy/run.mjs` is host-agnostic. It reads the `DEPLOY_TARGET`
-repository variable and calls `scripts/deploy/adapters/<target>.mjs`:
+repository variable and calls `scripts/deploy/adapters/<target>.mjs`. The target
+must use lowercase letters, numbers, and dashes, starting with a letter or
+number (for example, `cloud-run`):
 
 ```js
 export default async function deploy(context) {
