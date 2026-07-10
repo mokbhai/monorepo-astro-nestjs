@@ -1,9 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { cp, mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
+import { execFile } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const rootDir = new URL('../', import.meta.url);
+const execFileAsync = promisify(execFile);
 
 async function readText(relativePath) {
   return readFile(new URL(relativePath, rootDir), 'utf8');
@@ -128,6 +133,96 @@ test('deployment is convention-driven by apps/<name>/Dockerfile', async () => {
   );
   await stat(new URL('apps/web-host/Dockerfile', rootDir));
   await stat(new URL('apps/api/Dockerfile', rootDir));
+});
+
+test('api production startup applies migrations before starting the server', async () => {
+  const [dockerfile, entrypoint] = await Promise.all([
+    readText('apps/api/Dockerfile'),
+    readText('apps/api/docker-entrypoint.sh'),
+  ]);
+
+  assert.match(dockerfile, /CMD \["\/usr\/local\/bin\/api-entrypoint"\]/);
+  assert.doesNotMatch(dockerfile, /ENTRYPOINT/);
+
+  const migrateIndex = entrypoint.indexOf('prisma migrate deploy');
+  const apiIndex = entrypoint.indexOf('exec node /app/dist/main');
+  assert.match(entrypoint, /^#!\/bin\/sh\nset -eu\n/);
+  assert.match(entrypoint, /cd -P \/app\/node_modules\/@workspace-starter\/db/);
+  assert.notEqual(migrateIndex, -1);
+  assert.notEqual(apiIndex, -1);
+  assert.ok(migrateIndex < apiIndex, 'migrations must run before API startup');
+  assert.doesNotMatch(
+    entrypoint,
+    /\|\||;/,
+    'migration failure must stop startup',
+  );
+});
+
+test('api production deploy includes a runnable Prisma migration artifact', async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'api-production-deploy-'));
+  const isolatedRepoDir = path.join(tempDir, 'repo');
+  const deployDir = path.join(tempDir, 'deploy');
+  const sourceRoot = fileURLToPath(rootDir);
+
+  try {
+    await cp(sourceRoot, isolatedRepoDir, {
+      recursive: true,
+      filter(source) {
+        const relativePath = path.relative(sourceRoot, source);
+        return !relativePath
+          .split(path.sep)
+          .some((part) => ['.git', '.turbo', 'node_modules'].includes(part));
+      },
+    });
+
+    await execFileAsync(
+      'corepack',
+      [
+        'pnpm',
+        'deploy',
+        '--legacy',
+        '--filter',
+        '@workspace-starter/api',
+        '--prod',
+        deployDir,
+      ],
+      { cwd: isolatedRepoDir },
+    );
+
+    const dbDir = path.join(
+      deployDir,
+      'node_modules',
+      '@workspace-starter',
+      'db',
+    );
+    await Promise.all([
+      stat(path.join(dbDir, 'prisma.config.ts')),
+      stat(path.join(dbDir, 'prisma', 'schema.prisma')),
+      stat(
+        path.join(
+          dbDir,
+          'prisma',
+          'migrations',
+          '20250629120000_init',
+          'migration.sql',
+        ),
+      ),
+    ]);
+
+    const { stdout } = await execFileAsync(
+      '/bin/sh',
+      [
+        '-c',
+        'cd -P "$1" && PATH="$PWD/node_modules/.bin:$PATH" prisma --version',
+        'sh',
+        dbDir,
+      ],
+      { cwd: isolatedRepoDir },
+    );
+    assert.match(stdout, /prisma\s+: 7\./);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });
 
 test('workspace package manifests keep shared graph invariants', async () => {
