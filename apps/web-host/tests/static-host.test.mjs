@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createStaticHostServer } from '../dist/static-host.js';
@@ -113,4 +113,94 @@ test('does not serve files outside the mounted site root', async (t) => {
   const response = await fetch(`${origin}/../outside/secret.txt`);
 
   assert.equal(response.status, 404);
+});
+
+test('does not serve an outside file through a symlink', async (t) => {
+  const workspace = await mkdtemp(path.join(tmpdir(), 'web-host-'));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+
+  const primaryRoot = path.join(workspace, 'primary');
+  const outsideFile = path.join(workspace, 'secret.txt');
+
+  await createFixtureSite(primaryRoot, {
+    'index.html': '<h1>Primary</h1>',
+    '404.html': '<h1>Missing</h1>',
+  });
+  await writeFile(outsideFile, 'private', 'utf8');
+  await symlink(outsideFile, path.join(primaryRoot, 'secret.txt'));
+
+  const origin = await withServer(t, {
+    sites: [{ name: 'primary', basePath: '/', rootDir: primaryRoot }],
+  });
+  const response = await fetch(`${origin}/secret.txt`);
+
+  assert.equal(response.status, 404);
+  assert.match(await response.text(), /Missing/);
+});
+
+test('does not serve an outside directory through a symlink', async (t) => {
+  const workspace = await mkdtemp(path.join(tmpdir(), 'web-host-'));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+
+  const primaryRoot = path.join(workspace, 'primary');
+  const outsideRoot = path.join(workspace, 'outside');
+
+  await createFixtureSite(primaryRoot, {
+    'index.html': '<h1>Primary</h1>',
+  });
+  await createFixtureSite(outsideRoot, {
+    'secret.txt': 'private',
+  });
+  await symlink(outsideRoot, path.join(primaryRoot, 'linked'));
+
+  const origin = await withServer(t, {
+    sites: [{ name: 'primary', basePath: '/', rootDir: primaryRoot }],
+  });
+  const response = await fetch(`${origin}/linked/secret.txt`);
+
+  assert.equal(response.status, 404);
+});
+
+test('rejects descendant symlinks even when they point inside the root', async (t) => {
+  const workspace = await mkdtemp(path.join(tmpdir(), 'web-host-'));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+
+  const primaryRoot = path.join(workspace, 'primary');
+
+  await createFixtureSite(primaryRoot, {
+    'index.html': '<h1>Primary</h1>',
+    'assets/public.txt': 'public',
+  });
+  await symlink(
+    path.join(primaryRoot, 'assets', 'public.txt'),
+    path.join(primaryRoot, 'linked.txt'),
+  );
+
+  const origin = await withServer(t, {
+    sites: [{ name: 'primary', basePath: '/', rootDir: primaryRoot }],
+  });
+  const response = await fetch(`${origin}/linked.txt`);
+
+  assert.equal(response.status, 404);
+});
+
+test('serves normal files when the mounted root itself is a symlink', async (t) => {
+  const workspace = await mkdtemp(path.join(tmpdir(), 'web-host-'));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+
+  const canonicalRoot = path.join(workspace, 'primary');
+  const linkedRoot = path.join(workspace, 'linked-primary');
+
+  await createFixtureSite(canonicalRoot, {
+    'index.html': '<h1>Linked root</h1>',
+  });
+  await symlink(canonicalRoot, linkedRoot);
+
+  const origin = await withServer(t, {
+    sites: [{ name: 'primary', basePath: '/', rootDir: linkedRoot }],
+  });
+  const response = await fetch(`${origin}/`);
+
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /Linked root/);
 });

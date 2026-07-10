@@ -1,5 +1,5 @@
 import { createReadStream, existsSync, readdirSync } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { lstat, realpath, stat } from 'node:fs/promises';
 import {
   createServer,
   type IncomingMessage,
@@ -224,7 +224,7 @@ async function findStaticFile(
   const candidates = getFileCandidates(rootDir, normalizedPath);
 
   for (const candidate of candidates) {
-    const filePath = resolveSafePath(rootDir, candidate);
+    const filePath = await resolveSafePath(rootDir, candidate);
 
     if (!filePath) {
       continue;
@@ -264,18 +264,49 @@ function getFileCandidates(rootDir: string, normalizedPath: string) {
   ];
 }
 
-function resolveSafePath(rootDir: string, candidatePath: string) {
-  const resolvedRoot = path.resolve(rootDir);
-  const resolvedCandidate = path.resolve(candidatePath);
+async function resolveSafePath(rootDir: string, candidatePath: string) {
+  try {
+    const resolvedRoot = path.resolve(rootDir);
+    const resolvedCandidate = path.resolve(candidatePath);
+    const relativeCandidate = path.relative(resolvedRoot, resolvedCandidate);
 
-  if (
-    resolvedCandidate === resolvedRoot ||
-    resolvedCandidate.startsWith(`${resolvedRoot}${path.sep}`)
-  ) {
-    return resolvedCandidate;
+    if (!isContainedPath(relativeCandidate)) {
+      return null;
+    }
+
+    const canonicalRoot = await realpath(resolvedRoot);
+    const canonicalCandidatePath = path.join(canonicalRoot, relativeCandidate);
+    const pathSegments = relativeCandidate.split(path.sep).filter(Boolean);
+    let descendantPath = canonicalRoot;
+
+    // Reject every descendant symlink, including in-root links, so staged
+    // frontend trees have one predictable filesystem boundary. The mounted
+    // root itself may still be a symlink and is canonicalized above.
+    for (const segment of pathSegments) {
+      descendantPath = path.join(descendantPath, segment);
+      const descendantStat = await lstat(descendantPath);
+
+      if (descendantStat.isSymbolicLink()) {
+        return null;
+      }
+    }
+
+    const canonicalCandidate = await realpath(canonicalCandidatePath);
+    const canonicalRelative = path.relative(canonicalRoot, canonicalCandidate);
+
+    return isContainedPath(canonicalRelative) ? canonicalCandidate : null;
+  } catch {
+    return null;
   }
+}
 
-  return null;
+function isContainedPath(relativePath: string) {
+  return (
+    relativePath === '' ||
+    (!path.isAbsolute(relativePath) &&
+      relativePath !== '..' &&
+      !relativePath.startsWith(`..${path.sep}`))
+  );
 }
 
 function getCacheControl(filePath: string) {
