@@ -46,6 +46,61 @@ test('parseDeployContext rejects malformed DEPLOY_IMAGES', async () => {
   );
 });
 
+test('parseDeployContext rejects unsafe DEPLOY_TARGET values', async () => {
+  const { parseDeployContext } = await loadDispatcher();
+
+  for (const target of [
+    'Cloud-Run',
+    '../escape',
+    'cloud run',
+    'cloud-run.mjs',
+  ]) {
+    assert.throws(
+      () => parseDeployContext({ DEPLOY_TARGET: target }),
+      /Deploy target must be lowercase letters, numbers, and dashes/,
+    );
+  }
+});
+
+test('runDeploy rejects unsafe DEPLOY_TARGET before path lookup or import', async () => {
+  const { runDeploy } = await loadDispatcher();
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'deploy-adapters-'));
+  const adaptersDir = path.join(tempDir, 'adapters');
+  const markerFile = path.join(tempDir, 'imported');
+
+  await writeFile(
+    path.join(tempDir, 'escape.mjs'),
+    `import { writeFile } from 'node:fs/promises';
+await writeFile(${JSON.stringify(markerFile)}, 'imported');
+export default async function deploy() {}
+`,
+  );
+
+  try {
+    for (const target of [
+      'Cloud-Run',
+      '../escape',
+      'cloud run',
+      'cloud-run.mjs',
+    ]) {
+      await assert.rejects(
+        runDeploy({
+          env: { DEPLOY_TARGET: target },
+          adaptersDir,
+          log: () => {},
+        }),
+        /Deploy target must be lowercase letters, numbers, and dashes/,
+      );
+    }
+
+    await assert.rejects(readFile(markerFile, 'utf8'), {
+      code: 'ENOENT',
+    });
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test('runDeploy skips when no DEPLOY_TARGET is set', async () => {
   const { runDeploy } = await loadDispatcher();
   const { lines, log } = silentLog();

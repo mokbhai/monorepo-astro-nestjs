@@ -29,6 +29,7 @@ import { pathToFileURL } from 'node:url';
 
 const scriptDir = path.dirname(new URL(import.meta.url).pathname);
 const DEFAULT_ADAPTERS_DIR = path.join(scriptDir, 'adapters');
+const TARGET_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 async function pathExists(targetPath) {
   try {
@@ -56,7 +57,26 @@ function parseImages(rawImages) {
   throw new Error('DEPLOY_IMAGES must be a JSON object of { app: imageRef }.');
 }
 
+export function validateDeployTarget(target) {
+  if (!TARGET_PATTERN.test(target)) {
+    return {
+      valid: false,
+      message:
+        'Deploy target must be lowercase letters, numbers, and dashes (e.g. "cloud-run").',
+    };
+  }
+  return { valid: true };
+}
+
 export function parseDeployContext(env = process.env) {
+  const rawTarget = env.DEPLOY_TARGET?.trim() || null;
+  if (rawTarget) {
+    const validation = validateDeployTarget(rawTarget);
+    if (!validation.valid) {
+      throw new Error(validation.message);
+    }
+  }
+
   const images = parseImages(env.DEPLOY_IMAGES);
   const apps = env.DEPLOY_APPS
     ? env.DEPLOY_APPS.split(',')
@@ -65,7 +85,7 @@ export function parseDeployContext(env = process.env) {
     : Object.keys(images);
 
   return {
-    target: env.DEPLOY_TARGET?.trim() || null,
+    target: rawTarget,
     images,
     apps,
     sha: env.DEPLOY_SHA?.trim() || null,
