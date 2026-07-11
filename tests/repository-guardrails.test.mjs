@@ -6,6 +6,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { selectDeployableApps } from '../scripts/select-deployable-apps.mjs';
 
 const rootDir = new URL('../', import.meta.url);
 const execFileAsync = promisify(execFile);
@@ -112,7 +113,7 @@ test('build-and-publish workflow is manual, configurable, and publish-only', asy
   assert.match(workflow, /primary_frontend:/);
 
   // Images remain convention-driven and retain immutable SHA and latest tags.
-  assert.match(workflow, /find apps -maxdepth 2 -name Dockerfile/);
+  assert.match(workflow, /node scripts\/select-deployable-apps\.mjs/);
   assert.match(workflow, /packages: write/);
   assert.match(workflow, /docker\/build-push-action/);
   assert.match(workflow, /PUBLIC_API_URL=\$\{\{ inputs\.public_api_url \}\}/);
@@ -125,6 +126,29 @@ test('build-and-publish workflow is manual, configurable, and publish-only', asy
 
   assert.doesNotMatch(workflow, /node scripts\/deploy\/run\.mjs/);
   assert.doesNotMatch(workflow, /^\s{2}deploy:/m);
+});
+
+test('deployable app selection handles all, subsets, whitespace, and duplicates', () => {
+  const available = ['web-host', 'api'];
+
+  assert.deepEqual(selectDeployableApps(available, 'all'), ['api', 'web-host']);
+  assert.deepEqual(selectDeployableApps(available, ' web-host, api,api '), [
+    'api',
+    'web-host',
+  ]);
+});
+
+test('deployable app selection rejects empty and unknown selections clearly', () => {
+  const available = ['api', 'web-host'];
+
+  assert.throws(
+    () => selectDeployableApps(available, ' ,  '),
+    /Select at least one deployable app, or use "all"\./,
+  );
+  assert.throws(
+    () => selectDeployableApps(available, 'api,nope'),
+    /Unknown or non-deployable app\(s\): nope\nAvailable apps: api, web-host/,
+  );
 });
 
 test('web-host uses the selected primary frontend at build time and runtime', async () => {
