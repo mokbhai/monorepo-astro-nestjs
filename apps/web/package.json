@@ -13,7 +13,7 @@
     "test": "pnpm --filter @workspace-starter/i18n build && node --test tests/*.test.mjs && vitest run"
   },
   "dependencies": {
-    "@astrojs/node": "^10.1.1",
+    "@astrojs/node": "^11.0.2",
     "@tanstack/react-query": "^5.100.11",
     "@trpc/client": "catalog:",
     "@trpc/react-query": "catalog:",
@@ -21,13 +21,13 @@
     "@workspace-starter/storage": "workspace:*",
     "@workspace-starter/types": "workspace:*",
     "@workspace-starter/ui": "workspace:*",
-    "astro": "^6.3.5",
+    "astro": "^7.0.7",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
-    "@astrojs/react": "^5.0.5",
+    "@astrojs/react": "^6.0.1",
     "@tailwindcss/vite": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
