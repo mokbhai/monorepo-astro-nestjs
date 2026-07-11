@@ -2,7 +2,7 @@ import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import { createTRPCReact } from '@trpc/react-query';
 import type { AppRouter } from '@workspace-starter/api';
 
-const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
+const apiUrl = (import.meta.env.PUBLIC_API_URL ?? '').replace(/\/$/, '');
 
 // ── React islands client (use inside .tsx components with React Query) ────
 export const trpc = createTRPCReact<AppRouter>();

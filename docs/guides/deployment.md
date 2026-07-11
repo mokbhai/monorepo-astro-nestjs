@@ -3,31 +3,34 @@
 This template builds **products**, so it ships the deployment _mechanism_ and
 contract, not a commitment to any one host. Each product fills in the host.
 
-## Model: frontends aggregate, backends stay independent
+## Model: one combined web host, separable API
 
-Frontends and backends are different problems, so they deploy differently:
+The default deployment is one application image and one public listener:
 
-- **Frontends are static artifacts.** Every Astro app under `apps/*` is built
-  as a static site and bundled into a single deployable, `apps/web-host`. The
-  primary frontend (default `web`) is served at `/`, every other frontend at
-  `/<dir-name>`. One image, one deploy, one origin — no matter how many
-  frontends you have.
-- **Backends are stateful services.** Each backend (e.g. `apps/api`) ships its
-  own image and deploys independently, with its own runtime and scaling.
+- `apps/web-host` owns the Fastify listener. NestJS/tRPC routes (currently
+  `/trpc/*`) are registered first.
+- The primary Astro application is built with `@astrojs/node` in middleware
+  mode. Its SSR routes, response headers, redirects, cookies, and streaming are
+  passed directly through the Node request/response objects.
+- Secondary Astro applications remain prerendered and are served under
+  `/<dir-name>` with the existing traversal and symlink protections.
+- Browser API requests default to same-origin `/trpc`; set `PUBLIC_API_URL` at
+  build time only for an explicit split-host deployment.
 
-A reverse proxy / ingress in front routes hostnames or paths to the web-host
-image and to each backend.
+The API bootstrap remains reusable and `pnpm --filter @workspace-starter/api
+start` still opens the standalone API listener. `apps/api/Dockerfile` is kept
+for a future split deployment.
 
-The API image applies committed database migrations before every process start.
-Its entrypoint runs `prisma migrate deploy` and starts `node dist/main` only
+The combined image applies committed database migrations before every process
+start. Its entrypoint runs `prisma migrate deploy` and starts the web host only
 after migration succeeds. A migration failure exits the container without
-starting the API (fail closed). Set `DATABASE_URL` for the target database and
-ensure only compatible API revisions start concurrently during a rollout.
+opening the listener (fail closed). Nest shutdown hooks close Prisma resources.
+The standalone API image retains the same migration-first behavior.
 
 ```
-proxy ── /, /admin, … ─► web-host image (all frontends)
-     ├── api.*          ─► api image
-     └── jobs.*         ─► other backend images
+client ─► web-host image ─┬─ /trpc/* ─► NestJS/tRPC
+                          ├─ /secondary-web/* ─► static host
+                          └─ all other routes ─► Astro middleware
 ```
 
 ## The convention: a Dockerfile makes an app deployable
@@ -118,5 +121,5 @@ container publishing alone never runs it.
 
 ## Local production run
 
-`pnpm start` builds everything, stages the frontends, and runs the web-host and
-api together — the same topology as production, on one machine.
+`pnpm start` builds everything, stages the frontends, and runs the combined
+web-host on one listener. Compose runs the same topology with PostgreSQL.

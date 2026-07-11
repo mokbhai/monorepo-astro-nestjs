@@ -11,6 +11,13 @@
     "lint": "eslint \"src/**/*.ts\"",
     "test": "pnpm build && node --test tests/*.test.mjs"
   },
+  "dependencies": {
+    "@workspace-starter/api": "workspace:*",
+    "@workspace-starter/web": "workspace:*",
+    "fastify": "^5.8.5",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
   "devDependencies": {
     "@types/node": "catalog:",
     "@workspace-starter/config-typescript": "workspace:*",

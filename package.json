@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "turbo dev",
-    "start": "pnpm build && node scripts/build-frontends.mjs && pnpm -r --parallel --filter @workspace-starter/web-host --filter @workspace-starter/api start",
+    "start": "pnpm build && node scripts/build-frontends.mjs && pnpm --filter @workspace-starter/web-host start",
     "build:frontends": "node scripts/build-frontends.mjs",
     "deploy:run": "node scripts/deploy/run.mjs",
     "setup:starter": "node scripts/setup-starter.mjs",
