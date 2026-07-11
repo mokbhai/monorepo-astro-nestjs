@@ -101,24 +101,38 @@ test('GitHub CI runs the same repository verification command', async () => {
   assert.match(workflow, /pnpm verify/);
 });
 
-test('build-and-publish workflow is gated on CI and publishes per-app images', async () => {
+test('build-and-publish workflow is manual, configurable, and publish-only', async () => {
   const workflow = await readText('.github/workflows/build-and-publish.yml');
 
-  // Deploy must never run on a red build: it triggers off CI completion and
-  // only proceeds when the CI run concluded successfully.
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \['CI'\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /workflow_run:/);
+  assert.match(workflow, /ref:/);
+  assert.match(workflow, /apps:/);
+  assert.match(workflow, /public_api_url:/);
+  assert.match(workflow, /primary_frontend:/);
 
-  // Images are discovered by convention (apps/<name>/Dockerfile) and pushed to
-  // a registry tagged by git SHA.
+  // Images remain convention-driven and retain immutable SHA and latest tags.
   assert.match(workflow, /find apps -maxdepth 2 -name Dockerfile/);
   assert.match(workflow, /packages: write/);
   assert.match(workflow, /docker\/build-push-action/);
-  assert.match(workflow, /ghcr\.io/);
+  assert.match(workflow, /PUBLIC_API_URL=\$\{\{ inputs\.public_api_url \}\}/);
+  assert.match(
+    workflow,
+    /PRIMARY_FRONTEND=\$\{\{ inputs\.primary_frontend \}\}/,
+  );
+  assert.match(workflow, /needs\.discover\.outputs\.sha/);
+  assert.match(workflow, /:latest/);
 
-  // The deploy step routes through the host-agnostic dispatcher.
-  assert.match(workflow, /node scripts\/deploy\/run\.mjs/);
+  assert.doesNotMatch(workflow, /node scripts\/deploy\/run\.mjs/);
+  assert.doesNotMatch(workflow, /^\s{2}deploy:/m);
+});
+
+test('web-host uses the selected primary frontend at build time and runtime', async () => {
+  const dockerfile = await readText('apps/web-host/Dockerfile');
+
+  assert.match(dockerfile, /ARG PRIMARY_FRONTEND=web/);
+  assert.match(dockerfile, /ENV PRIMARY_FRONTEND=\$\{PRIMARY_FRONTEND\}/);
+  assert.doesNotMatch(dockerfile, /ENV PRIMARY_FRONTEND=web/);
 });
 
 test('deployment is convention-driven by apps/<name>/Dockerfile', async () => {

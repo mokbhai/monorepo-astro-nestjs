@@ -44,30 +44,48 @@ proxy ── /, /admin, … ─► web-host image (all frontends)
   it its own `Dockerfile` and it becomes an independently published image like
   a backend. This is the deliberate exception to aggregation.
 
-The primary frontend is chosen by the `PRIMARY_FRONTEND` env (default `web`)
-and is mounted at `/`. A frontend's Astro `base` must match its mount path;
-`build-frontends.mjs` sets `ASTRO_BASE` per app so they stay in sync.
+The primary frontend is selected when the web-host image is built and must also
+be its runtime `PRIMARY_FRONTEND` (default `web`). The Dockerfile carries the
+selected build argument into the runtime image by default, so its staged Astro
+base paths and server mounts stay consistent. A runtime override should only
+select the same frontend used for the build. A frontend's Astro `base` must
+match its mount path; `build-frontends.mjs` sets `ASTRO_BASE` per app so they
+stay in sync.
 
-## Pipeline
+## Manual container release
 
-`.github/workflows/build-and-publish.yml` runs **only after CI ("Verify")
-succeeds on `main`**, so a red build can never ship. It:
+`.github/workflows/build-and-publish.yml` never runs after CI or a push. An
+operator must start **Build and Publish** from the GitHub Actions UI and provide:
 
-1. Discovers deployable apps (`apps/*/Dockerfile`).
-2. Builds each image and pushes to the registry, tagged by git SHA and
-   `latest`. Default registry is GHCR (`ghcr.io/<owner>/<repo>`); override with
-   the `DEPLOY_REGISTRY` repository variable.
-3. Invokes the deploy dispatcher (below).
+- **ref:** the branch, tag, or SHA to check out and publish;
+- **apps:** `all` or a comma-separated subset of deployable app directory names;
+- **public_api_url:** the `PUBLIC_API_URL` embedded in web frontend artifacts;
+- **primary_frontend:** the Astro app staged and served at `/` by web-host.
 
-All deployable images are rebuilt every run for predictability. Products that
-want affected-only builds can filter the discover matrix.
+The workflow validates selected apps against the `apps/*/Dockerfile`
+convention, resolves the selected ref to its exact commit SHA, and builds the
+selected images. It passes both frontend settings as Docker build arguments;
+web-host uses them while staging its static sites. Images are pushed to GitHub
+Container Registry (`ghcr.io/<owner>/<repo>`) with both the resolved git SHA
+and `latest` tags.
 
-## The deploy contract
+Publishing does **not** deploy or invoke the deploy dispatcher. Deploy an
+explicit SHA-tagged image separately using your host's release process. Existing
+GHCR package versions are retained; disabling automatic releases does not
+delete package history.
 
-`scripts/deploy/run.mjs` is host-agnostic. It reads the `DEPLOY_TARGET`
-repository variable and calls `scripts/deploy/adapters/<target>.mjs`. The target
-must use lowercase letters, numbers, and dashes, starting with a letter or
-number (for example, `cloud-run`):
+Run CI for the selected ref and confirm it passes before manually publishing.
+Because publishing is intentionally operator-triggered, the workflow does not
+automatically wait for or infer a CI run.
+
+## Optional deploy dispatcher
+
+`scripts/deploy/run.mjs` remains available for products that choose to invoke
+it from their own manual host-release process. The Build and Publish workflow
+does not call it. The script is host-agnostic: it reads `DEPLOY_TARGET` and
+calls `scripts/deploy/adapters/<target>.mjs`. The target must use lowercase
+letters, numbers, and dashes, starting with a letter or number (for example,
+`cloud-run`):
 
 ```js
 export default async function deploy(context) {
@@ -82,8 +100,9 @@ export default async function deploy(context) {
 }
 ```
 
-With no `DEPLOY_TARGET`, or no matching adapter, deploy is a documented no-op,
-so a fresh clone stays green.
+With no `DEPLOY_TARGET`, or no matching adapter, the dispatcher is a documented
+no-op. Set the deploy contract environment variables and invoke it explicitly;
+container publishing alone never runs it.
 
 ### Writing an adapter
 

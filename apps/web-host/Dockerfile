@@ -16,7 +16,9 @@ COPY . .
 RUN pnpm install --frozen-lockfile --offline
 
 ARG PUBLIC_API_URL=http://localhost:3001
+ARG PRIMARY_FRONTEND=web
 ENV PUBLIC_API_URL=${PUBLIC_API_URL}
+ENV PRIMARY_FRONTEND=${PRIMARY_FRONTEND}
 
 # Build the host server, then build and stage every Astro frontend under
 # apps/* into apps/web-host/sites (discovered automatically).
@@ -27,10 +29,11 @@ FROM node:22-slim AS runtime
 
 WORKDIR /app
 
+ARG PRIMARY_FRONTEND=web
 ENV HOST=0.0.0.0
 ENV NODE_ENV=production
 ENV PORT=4321
-ENV PRIMARY_FRONTEND=web
+ENV PRIMARY_FRONTEND=${PRIMARY_FRONTEND}
 
 COPY --from=build --chown=node:node /repo/apps/web-host/dist /app/dist
 COPY --from=build --chown=node:node /repo/apps/web-host/sites /app/sites
