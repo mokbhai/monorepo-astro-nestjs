@@ -17,7 +17,7 @@ const REPO_DIR = process.cwd();
 const STOCK_DOCKER_COMPOSE_PATH = path.join(REPO_DIR, 'docker-compose.yml');
 
 const KNOWN_START_SCRIPT =
-  'pnpm build && node scripts/build-frontends.mjs && pnpm -r --parallel --filter @workspace-starter/web-host --filter @workspace-starter/api start';
+  'pnpm build && node scripts/build-frontends.mjs && pnpm --filter @workspace-starter/web-host start';
 
 async function loadWebAppRemovalHelpers() {
   const moduleUrl = pathToFileURL(
@@ -84,10 +84,12 @@ test('removeTemplateWebApps removes bundled web apps and rewrites root scripts',
       'utf8',
     );
     const webHostStart = stockDockerCompose.indexOf('  web-host:\n');
-    const apiBoundary = stockDockerCompose.indexOf('\n  api:\n', webHostStart);
+    const volumesBoundary = stockDockerCompose.indexOf(
+      '\nvolumes:\n',
+      webHostStart,
+    );
     assert.notEqual(webHostStart, -1);
-    assert.notEqual(apiBoundary, -1);
-    const apiStart = apiBoundary + 1;
+    assert.notEqual(volumesBoundary, -1);
 
     const result = await removeTemplateWebApps({ repoDir: tempDir });
 
@@ -142,7 +144,7 @@ test('removeTemplateWebApps removes bundled web apps and rewrites root scripts',
 
     assert.equal(
       await readFile(path.join(tempDir, 'docker-compose.yml'), 'utf8'),
-      `${stockDockerCompose.slice(0, webHostStart)}${stockDockerCompose.slice(apiStart)}`,
+      `${stockDockerCompose.slice(0, webHostStart)}  api:\n    build:\n      context: .\n      dockerfile: apps/api/Dockerfile\n    environment:\n      NODE_ENV: production\n      PORT: 3001\n      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}\n      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/template_jp?schema=public\n    ports:\n      - '\${API_PORT:-3001}:3001'\n    depends_on:\n      postgres:\n        condition: service_healthy\n${stockDockerCompose.slice(volumesBoundary)}`,
     );
   } finally {
     await rm(tempDir, { recursive: true, force: true });

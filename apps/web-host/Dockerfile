@@ -15,15 +15,16 @@ RUN pnpm fetch
 COPY . .
 RUN pnpm install --frozen-lockfile --offline
 
-ARG PUBLIC_API_URL=http://localhost:3001
+ARG PUBLIC_API_URL=
 ARG PRIMARY_FRONTEND=web
 ENV PUBLIC_API_URL=${PUBLIC_API_URL}
 ENV PRIMARY_FRONTEND=${PRIMARY_FRONTEND}
 
 # Build the host server, then build and stage every Astro frontend under
 # apps/* into apps/web-host/sites (discovered automatically).
-RUN pnpm --filter @workspace-starter/web-host build
+RUN pnpm turbo build --filter=@workspace-starter/web-host...
 RUN node scripts/build-frontends.mjs
+RUN pnpm deploy --legacy --filter @workspace-starter/web-host --prod /app
 
 FROM node:22-slim AS runtime
 
@@ -35,11 +36,12 @@ ENV NODE_ENV=production
 ENV PORT=4321
 ENV PRIMARY_FRONTEND=${PRIMARY_FRONTEND}
 
-COPY --from=build --chown=node:node /repo/apps/web-host/dist /app/dist
+COPY --from=build --chown=node:node /app /app
 COPY --from=build --chown=node:node /repo/apps/web-host/sites /app/sites
+COPY --chown=node:node --chmod=755 apps/web-host/docker-entrypoint.sh /usr/local/bin/web-host-entrypoint
 
 USER node
 
 EXPOSE 4321
 
-CMD ["node", "dist/server.js"]
+CMD ["/usr/local/bin/web-host-entrypoint"]

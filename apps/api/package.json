@@ -12,7 +12,8 @@
   },
   "exports": {
     ".": {
-      "types": "./src/index.ts"
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
     }
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "@nestjs/core": "^11.1.21",
     "@nestjs/platform-fastify": "^11.1.21",
     "@trpc/server": "catalog:",
+    "fastify": "^5.8.5",
     "@workspace-starter/db": "workspace:*",
     "@workspace-starter/types": "workspace:*",
     "reflect-metadata": "^0.2.2",

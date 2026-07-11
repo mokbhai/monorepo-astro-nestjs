@@ -76,7 +76,7 @@ For a production-style local run:
 pnpm start
 ```
 
-`pnpm start` builds the workspace, stages every Astro frontend into the web host, then launches the web host and API production servers together — the same topology as production. The web host serves the primary frontend (`web`) at `/` and every other frontend under its directory name (e.g. `secondary-web` at `/secondary-web`).
+`pnpm start` builds the workspace, stages every Astro frontend into the web host, then launches one Fastify/Nest process and one public listener. NestJS handles `/trpc/*` first, the primary Astro app runs through `@astrojs/node` middleware at `/`, and secondary prerendered apps remain available at paths such as `/secondary-web`. Use `pnpm --filter @workspace-starter/api start` when running the API as a separate service.
 
 See [docs/guides/deployment.md](docs/guides/deployment.md) for how frontends and backends are built, published, and deployed.
 
@@ -136,7 +136,7 @@ Useful Docker commands:
 docker compose up --build
 ```
 
-The compose file runs two services: the **web host** (one image bundling every Astro frontend, served from one origin) and the **API**. Add a backend by giving it an `apps/<name>/Dockerfile`; it then builds and deploys as its own image. See [docs/guides/deployment.md](docs/guides/deployment.md).
+The compose file runs the **combined web host** (NestJS/tRPC, the primary Astro SSR runtime, and static secondary Astro apps) plus PostgreSQL. It exposes one application port. The API retains its standalone Dockerfile and startup command for a future split deployment. See [docs/guides/deployment.md](docs/guides/deployment.md).
 
 ## Quality Gates
 

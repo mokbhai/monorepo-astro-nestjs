@@ -11,21 +11,19 @@ const nodeEnv = (
     process?: { env?: Record<string, string | undefined> };
   }
 ).process?.env;
-// A static build emits a flat dist/ with no server runtime. Used both for
-// GitHub Pages and for aggregation behind apps/web-host. Any other value (or
-// none) keeps the node standalone adapter for local preview and standalone
-// containers.
+// A static build emits a flat dist/ for secondary applications and GitHub
+// Pages. The primary combined-host build uses Astro's Node middleware runtime.
 const isStaticBuild =
   nodeEnv?.ASTRO_DEPLOY_TARGET === 'github-pages' ||
   nodeEnv?.ASTRO_DEPLOY_TARGET === 'static';
 
 export default defineConfig({
-  output: 'static',
+  output: isStaticBuild ? 'static' : 'server',
   ...(isStaticBuild
     ? {}
     : {
         adapter: node({
-          mode: 'standalone',
+          mode: 'middleware',
         }),
       }),
   ...(nodeEnv?.ASTRO_SITE ? { site: nodeEnv.ASTRO_SITE } : {}),

@@ -211,6 +211,32 @@ async function serveMissingFile(
   createReadStream(notFoundFile.filePath).pipe(response);
 }
 
+export async function tryServeStaticFile(
+  request: IncomingMessage,
+  response: ServerResponse,
+  site: MountedSite,
+  requestPath: string,
+): Promise<boolean> {
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    return false;
+  }
+
+  const file = await findStaticFile(path.resolve(site.rootDir), requestPath);
+  if (!file) {
+    return false;
+  }
+
+  response.statusCode = 200;
+  response.setHeader('Content-Type', file.contentType);
+  response.setHeader('Cache-Control', getCacheControl(file.filePath));
+  if (request.method === 'HEAD') {
+    response.end();
+  } else {
+    createReadStream(file.filePath).pipe(response);
+  }
+  return true;
+}
+
 async function findStaticFile(
   rootDir: string,
   requestPath: string,

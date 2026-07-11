@@ -17,7 +17,7 @@ const REMOVED_WORKSPACE_NAMES = [
 ];
 
 const KNOWN_START_SCRIPT =
-  'pnpm build && node scripts/build-frontends.mjs && pnpm -r --parallel --filter @workspace-starter/web-host --filter @workspace-starter/api start';
+  'pnpm build && node scripts/build-frontends.mjs && pnpm --filter @workspace-starter/web-host start';
 const API_ONLY_START_SCRIPT =
   'pnpm build && pnpm --filter @workspace-starter/api start';
 const KNOWN_BUILD_FRONTENDS_SCRIPT = 'node scripts/build-frontends.mjs';
@@ -61,17 +61,18 @@ const WEB_HOST_DOCKER_COMPOSE_SERVICE = `  web-host:
       context: .
       dockerfile: apps/web-host/Dockerfile
       args:
-        PUBLIC_API_URL: \${PUBLIC_API_URL:-http://localhost:3001}
+        PUBLIC_API_URL: \${PUBLIC_API_URL:-}
     environment:
       NODE_ENV: production
       PORT: 4321
       HOST: 0.0.0.0
       PRIMARY_FRONTEND: \${PRIMARY_FRONTEND:-web}
+      DATABASE_URL: ${STOCK_LOCAL_DATABASE_URL}
     ports:
       - '\${WEB_PORT:-4321}:4321'
     depends_on:
-      api:
-        condition: service_started
+      postgres:
+        condition: service_healthy
 
 `;
 
@@ -97,7 +98,7 @@ volumes:
 `;
 
 const KNOWN_DOCKER_COMPOSE = `services:
-${POSTGRES_DOCKER_COMPOSE_SERVICE}${WEB_HOST_DOCKER_COMPOSE_SERVICE}${API_DOCKER_COMPOSE_SERVICE}${POSTGRES_DOCKER_COMPOSE_VOLUME}`;
+${POSTGRES_DOCKER_COMPOSE_SERVICE}${WEB_HOST_DOCKER_COMPOSE_SERVICE}${POSTGRES_DOCKER_COMPOSE_VOLUME.trimStart()}`;
 
 const API_AND_POSTGRES_DOCKER_COMPOSE = `services:
 ${POSTGRES_DOCKER_COMPOSE_SERVICE}${API_DOCKER_COMPOSE_SERVICE}${POSTGRES_DOCKER_COMPOSE_VOLUME}`;

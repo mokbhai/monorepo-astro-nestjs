@@ -9,7 +9,7 @@ async function readPackageJson(relativePath) {
   return JSON.parse(await readFile(file, 'utf8'));
 }
 
-test('workspace exposes production start scripts for root, web-host, and api', async () => {
+test('workspace exposes combined and API-only production start scripts', async () => {
   const [rootPkg, webHostPkg, apiPkg] = await Promise.all([
     readPackageJson('package.json'),
     readPackageJson('apps/web-host/package.json'),
@@ -36,10 +36,10 @@ test('workspace exposes production start scripts for root, web-host, and api', a
     /@workspace-starter\/web-host/,
     'root start script should launch the web-host workspace',
   );
-  assert.match(
+  assert.doesNotMatch(
     rootPkg.scripts.start,
-    /@workspace-starter\/api/,
-    'root start script should launch the api workspace',
+    /--filter @workspace-starter\/api start/,
+    'root start script should not open a second API listener',
   );
 
   assert.equal(

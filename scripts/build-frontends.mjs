@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 
-// Discovers every Astro frontend under apps/*, builds each as a static site,
-// and stages the output under apps/web-host/sites/<name>. apps/web-host then
-// serves them all from one process: the primary frontend at /, the rest at
-// /<name>. Adding a frontend needs no edits here or in web-host — drop an
-// Astro app under apps/ and it is picked up automatically.
+// Discovers every Astro frontend under apps/*, builds the primary application
+// for the Astro Node middleware runtime and secondary applications as static
+// sites, then stages all output under apps/web-host/sites/<name>.
 
 import { spawn } from 'node:child_process';
 import { access, cp, mkdir, readFile, readdir, rm } from 'node:fs/promises';
@@ -145,13 +143,14 @@ export async function buildAndStageFrontends({
     // Build through Turbo so each frontend's workspace dependencies (ui, i18n,
     // …) are built first via the build task's `^build` dependency. The build
     // env is declared in turbo.json so a per-app ASTRO_BASE invalidates cache.
+    const isPrimary = frontend.mountPath === '/';
     await runCommand(
       'pnpm',
       ['turbo', 'build', '--filter', frontend.packageName],
       {
         cwd: repoDir,
         env: {
-          ASTRO_DEPLOY_TARGET: 'static',
+          ASTRO_DEPLOY_TARGET: isPrimary ? 'middleware' : 'static',
           ASTRO_BASE: frontend.base,
         },
       },
@@ -160,7 +159,7 @@ export async function buildAndStageFrontends({
     const distDir = path.join(frontend.dir, 'dist');
     if (!(await pathExists(distDir))) {
       throw new Error(
-        `Expected static build output at ${distDir} for ${frontend.packageName}.`,
+        `Expected ${isPrimary ? 'middleware' : 'static'} build output at ${distDir} for ${frontend.packageName}.`,
       );
     }
 

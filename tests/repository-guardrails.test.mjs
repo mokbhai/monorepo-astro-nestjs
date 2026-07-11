@@ -149,6 +149,29 @@ test('deployment is convention-driven by apps/<name>/Dockerfile', async () => {
   await stat(new URL('apps/api/Dockerfile', rootDir));
 });
 
+test('combined web-host image deploys API, frontend, and migration runtime dependencies', async () => {
+  const [dockerfile, entrypoint, manifest] = await Promise.all([
+    readText('apps/web-host/Dockerfile'),
+    readText('apps/web-host/docker-entrypoint.sh'),
+    readJson('apps/web-host/package.json'),
+  ]);
+
+  assert.equal(manifest.dependencies['@workspace-starter/api'], 'workspace:*');
+  assert.equal(manifest.dependencies['@workspace-starter/web'], 'workspace:*');
+  assert.match(
+    dockerfile,
+    /pnpm deploy --legacy --filter @workspace-starter\/web-host --prod \/app/,
+  );
+  assert.match(dockerfile, /COPY --from=build --chown=node:node \/app \/app/);
+  assert.match(dockerfile, /CMD \["\/usr\/local\/bin\/web-host-entrypoint"\]/);
+  const migrateIndex = entrypoint.indexOf('prisma migrate deploy');
+  const hostIndex = entrypoint.indexOf('exec node /app/dist/server.js');
+  assert.notEqual(migrateIndex, -1);
+  assert.notEqual(hostIndex, -1);
+  assert.ok(migrateIndex < hostIndex);
+  assert.match(entrypoint, /node_modules\/@workspace-starter\/db/);
+});
+
 test('api production startup applies migrations before starting the server', async () => {
   const [dockerfile, entrypoint] = await Promise.all([
     readText('apps/api/Dockerfile'),
