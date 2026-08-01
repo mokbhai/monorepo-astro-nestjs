@@ -7,6 +7,11 @@ packages:
 # for a compromised package, so upgrades intentionally lag `latest` by a week.
 minimumReleaseAge: 10080
 
+# @jainparichay/* packages are our own published output, not a third-party
+# supply-chain risk, so they are exempt from the release-age quarantine above.
+minimumReleaseAgeExclude:
+  - '@jainparichay/*'
+
 allowBuilds:
   '@nestjs/core': true
   '@prisma/engines': true
