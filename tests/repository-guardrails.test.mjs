@@ -31,9 +31,9 @@ async function listPackageJsonFiles(directory) {
 test('root exposes repository guardrail scripts with pinned tooling', async () => {
   const pkg = await readJson('package.json');
 
-  assert.equal(pkg.packageManager, 'pnpm@11.1.3');
+  assert.equal(pkg.packageManager, 'pnpm@11.17.0');
   assert.equal(pkg.engines?.node, '>=22.13.0');
-  assert.equal(pkg.engines?.pnpm, '>=11.1.3 <12');
+  assert.equal(pkg.engines?.pnpm, '>=11.17.0 <12');
   assert.equal(pkg.devDependencies?.prettier, 'catalog:dev-tools');
   assert.equal(
     pkg.devDependencies?.['prettier-plugin-astro'],
@@ -84,10 +84,10 @@ test('local Git hooks call the repository verification scripts', async () => {
 test('GitHub CI runs the same repository verification command', async () => {
   const workflow = await readText('.github/workflows/ci.yml');
   const corepackInstallIndex = workflow.indexOf(
-    'npm install --global corepack@0.34.2',
+    'npm install --global corepack@0.34.7',
   );
   const pnpmPrepareIndex = workflow.indexOf(
-    'corepack prepare pnpm@11.1.3 --activate',
+    'corepack prepare pnpm@11.17.0 --activate',
   );
 
   assert.match(workflow, /node-version: 22\.13\.0/);
