@@ -1,4 +1,4 @@
 interface:
   display_name: "Template Workspace Changes"
-  short_description: "Keep workspace changes aligned"
-  default_prompt: "Use $template-workspace-changes to add, remove, or rename workspace packages without breaking manifests."
+  short_description: "Keep PNPM/Turbo workspace changes aligned"
+  default_prompt: "Use $template-workspace-changes to adjust workspace packages, shared dependencies, package boundaries, or Turbo tasks without breaking manifests."
