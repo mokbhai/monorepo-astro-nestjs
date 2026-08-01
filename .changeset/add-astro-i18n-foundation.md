@@ -1,5 +1,4 @@
 ---
-'@workspace-starter/i18n': minor
 '@workspace-starter/web': minor
 ---
 
