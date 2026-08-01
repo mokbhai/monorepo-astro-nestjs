@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
-    "@workspace-starter/config-typescript": "workspace:*",
+    "@jainparichay/config-typescript": "^0.1.0",
     "eslint": "catalog:dev-tools",
     "typescript": "catalog:"
   }

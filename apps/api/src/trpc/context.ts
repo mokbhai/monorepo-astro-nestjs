@@ -1,5 +1,5 @@
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
-import type { PrismaClient } from '@workspace-starter/db' with {
+import type { PrismaClient } from '@jainparichay/db' with {
   'resolution-mode': 'import',
 };
 
@@ -7,7 +7,7 @@ let dbClient: PrismaClient | undefined;
 
 async function getDbClient(): Promise<PrismaClient> {
   if (!dbClient) {
-    ({ prisma: dbClient } = await import('@workspace-starter/db'));
+    ({ prisma: dbClient } = await import('@jainparichay/db'));
   }
 
   return dbClient;

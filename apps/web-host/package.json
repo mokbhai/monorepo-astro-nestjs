@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@workspace-starter/api": "workspace:*",
-    "@workspace-starter/db": "workspace:*",
+    "@jainparichay/db": "^0.1.0",
     "@workspace-starter/web": "workspace:*",
     "fastify": "^5.10.0",
     "react": "catalog:",
@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@workspace-starter/config-typescript": "workspace:*",
+    "@jainparichay/config-typescript": "^0.1.0",
     "eslint": "catalog:dev-tools",
     "typescript": "catalog:"
   }

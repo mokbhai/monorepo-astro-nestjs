@@ -1,5 +1,5 @@
 {
-  "extends": "@workspace-starter/config-typescript/node.json",
+  "extends": "@jainparichay/config-typescript/node.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",

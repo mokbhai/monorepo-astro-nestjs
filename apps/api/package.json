@@ -23,8 +23,8 @@
     "@nestjs/platform-fastify": "^11.1.28",
     "@trpc/server": "catalog:",
     "fastify": "^5.10.0",
-    "@workspace-starter/db": "workspace:*",
-    "@workspace-starter/types": "workspace:*",
+    "@jainparichay/db": "^0.1.0",
+    "@jainparichay/types": "^0.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "catalog:"
@@ -33,7 +33,7 @@
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
     "@types/node": "catalog:",
-    "@workspace-starter/config-typescript": "workspace:*",
+    "@jainparichay/config-typescript": "^0.1.0",
     "eslint": "catalog:dev-tools",
     "typescript": "catalog:",
     "vitest": "catalog:"

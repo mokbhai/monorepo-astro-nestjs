@@ -1,4 +1,4 @@
-import { createTranslator, type MessageCatalog } from '@workspace-starter/i18n';
+import { createTranslator, type MessageCatalog } from '@jainparichay/i18n';
 
 import deHome from '../locales/de/home.json';
 import enHome from '../locales/en/home.json';

@@ -4,7 +4,7 @@ const mockFindMany = vi.fn();
 const mockFindUnique = vi.fn();
 const mockCreate = vi.fn();
 
-vi.mock('@workspace-starter/db', () => ({
+vi.mock('@jainparichay/db', () => ({
   prisma: {
     user: {
       findMany: mockFindMany,
