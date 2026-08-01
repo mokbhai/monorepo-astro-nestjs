@@ -5,10 +5,7 @@ export interface MessageCatalog {
 }
 
 export type CatalogValidationIssueType =
-  | 'missing'
-  | 'extra'
-  | 'type-mismatch'
-  | 'empty';
+  'missing' | 'extra' | 'type-mismatch' | 'empty';
 
 export interface CatalogValidationIssue {
   path: string;

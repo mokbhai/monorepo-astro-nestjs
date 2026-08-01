@@ -1,10 +1,5 @@
 export type IndexedDbKey =
-  | string
-  | number
-  | Date
-  | ArrayBuffer
-  | DataView<ArrayBuffer>
-  | IndexedDbKey[];
+  string | number | Date | ArrayBuffer | DataView<ArrayBuffer> | IndexedDbKey[];
 
 export type IndexedDbValue = unknown;
 

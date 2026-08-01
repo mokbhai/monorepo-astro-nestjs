@@ -58,7 +58,7 @@ The sample app is intentionally real enough to prove the architecture:
 
 ## Getting Started
 
-Use Node `>=22.13.0` and the pinned package manager, `pnpm@11.1.3`.
+Use Node `>=22.13.0` and the pinned package manager, `pnpm@11.17.0`.
 
 ```bash
 pnpm install

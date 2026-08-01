@@ -20,6 +20,15 @@ Before editing, inspect the current dependency graph and upgrade intent:
 
 Do not trust memory for latest versions. Use package-manager metadata such as `pnpm outdated`, `pnpm info <pkg> version`, release notes, or official docs for version-sensitive decisions.
 
+## Release-Age Buffer
+
+`pnpm-workspace.yaml` sets `minimumReleaseAge: 10080` (7 days). Versions published more recently than that will not resolve, so the newest publishable target is usually *not* `latest`.
+
+- `pnpm outdated` reports `latest` and ignores the buffer. Never copy its `Latest` column straight into a manifest — a range whose only match is too new resolves to an older version than you wrote, leaving the manifest misleading.
+- Pick the highest **semver** version older than the buffer, not the most recently published one. Packages backport patches to old majors, so "newest publish date" and "highest version" often disagree.
+- Verify what actually resolved against `pnpm-lock.yaml` after installing, rather than assuming the manifest range was honored.
+- Keep `minimumReleaseAge` in place. Lower or exclude it only on explicit request, and say so in the handoff.
+
 ## Upgrade Strategy
 
 - Prefer catalog updates for shared versions already centralized in `pnpm-workspace.yaml`. Use literal versions only when the dependency is intentionally local to one workspace.
@@ -39,6 +48,7 @@ Do not trust memory for latest versions. Use package-manager metadata such as `p
 - React 19 upgrades can affect peer ranges in `packages/ui`, `@types/react`, hydration behavior, and testing-library compatibility.
 - Tailwind 4 upgrades can affect Vite plugin usage, CSS entrypoints, class scanning, and `tailwind-merge` behavior.
 - TypeScript 6 upgrades can affect config presets in `packages/config-typescript`, declaration emit, ESLint parser support, and Astro/Nest typechecks.
+- TypeScript is deliberately held at `^6.0.3`. TypeScript 7 is the native (Go) compiler: it ships platform binaries and only `./unstable/*` exports, with no JS compiler API. `@typescript-eslint/*` (peer `>=4.8.4 <6.1.0`) and `@astrojs/check` (peer `^5.0.0 || ^6.0.0`) both still need that API. Re-check those two peer ranges before proposing TS 7 again; the catalog comment explains the pin.
 - Changesets upgrades can affect release scripts and generated changeset files.
 
 ## Edit Sequence

@@ -22,7 +22,7 @@ PNPM/Turborepo monorepo. Apps: `apps/web` is the Astro frontend and `apps/api` i
 
 ## Build, Test, and Development Commands
 
-Use Node `>=22.13.0` and the pinned package manager from `packageManager` (`pnpm@11.1.3`). Do not upgrade Node, PNPM, Turbo, or framework versions unless the task is specifically about dependency maintenance.
+Use Node `>=22.13.0` and the pinned package manager from `packageManager` (`pnpm@11.17.0`). Do not upgrade Node, PNPM, Turbo, or framework versions unless the task is specifically about dependency maintenance.
 
 - `pnpm install`: install dependencies.
 - `pnpm build`: build all workspaces.

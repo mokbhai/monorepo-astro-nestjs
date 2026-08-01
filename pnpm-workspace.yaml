@@ -2,7 +2,10 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
-minimumReleaseAge: 0
+# Supply-chain buffer: never resolve a version published less than 7 days ago
+# (10080 minutes). The days right after a release are the highest-risk window
+# for a compromised package, so upgrades intentionally lag `latest` by a week.
+minimumReleaseAge: 10080
 
 allowBuilds:
   '@nestjs/core': true
@@ -13,46 +16,49 @@ allowBuilds:
 
 catalog:
   # React
-  '@types/react': ^19.2.14
+  '@types/react': ^19.2.17
   '@types/react-dom': ^19.2.3
-  react: ^19.2.6
-  react-dom: ^19.2.6
+  react: ^19.2.8
+  react-dom: ^19.2.8
 
   # TypeScript
-  '@types/node': ^25.9.0
+  '@types/node': ^26.1.1
+  # Held at 6.x on purpose: TypeScript 7 is the native (Go) compiler and ships
+  # no JS compiler API, which @typescript-eslint (peer `>=4.8.4 <6.1.0`) and
+  # @astrojs/check (peer `^5.0.0 || ^6.0.0`) both still require.
   typescript: ^6.0.3
 
   # tRPC
-  '@trpc/server': ^11.17.0
-  '@trpc/client': ^11.17.0
-  '@trpc/react-query': ^11.17.0
+  '@trpc/server': ^11.18.0
+  '@trpc/client': ^11.18.0
+  '@trpc/react-query': ^11.18.0
 
   # Validation
   zod: ^4.4.3
 
   # Build
   tsup: ^8.5.1
-  tailwindcss: ^4.3.0
-  '@tailwindcss/vite': ^4.3.0
+  tailwindcss: ^4.3.3
+  '@tailwindcss/vite': ^4.3.3
 
   # Testing
-  vitest: ^4.1.5
-  '@testing-library/jest-dom': ^6.9.1
+  vitest: ^4.1.10
+  '@testing-library/jest-dom': ^7.0.0
   '@testing-library/react': ^16.3.2
   '@testing-library/user-event': ^14.6.1
   jsdom: ^29.1.1
 
-  openai: ^6.45.0
+  openai: ^6.49.0
 
-  prisma: ^7.8.0
-  '@prisma/client': ^7.8.0
-  '@prisma/adapter-pg': ^7.8.0
-  pg: ^8.16.3
+  prisma: ^7.9.0
+  '@prisma/client': ^7.9.0
+  '@prisma/adapter-pg': ^7.9.0
+  pg: ^8.22.0
 
 catalogs:
   dev-tools:
-    eslint: ^10.4.0
-    prettier: ^3.8.3
+    eslint: ^10.8.0
+    prettier: ^3.9.6
     prettier-plugin-astro: ^0.14.1
-    '@typescript-eslint/eslint-plugin': ^8.59.4
-    '@typescript-eslint/parser': ^8.59.4
+    '@typescript-eslint/eslint-plugin': ^8.65.0
+    '@typescript-eslint/parser': ^8.65.0
