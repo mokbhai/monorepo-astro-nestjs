@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@workspace-starter/api": "workspace:*",
+    "@workspace-starter/db": "workspace:*",
     "@workspace-starter/web": "workspace:*",
     "fastify": "^5.10.0",
     "react": "catalog:",
