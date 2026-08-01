@@ -8,7 +8,8 @@
     "start": "node dist/main",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" \"vitest.config.ts\"",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "sh -c 'if [ -d node_modules/@jainparichay/db ]; then cd node_modules/@jainparichay/db && ./node_modules/.bin/prisma generate; fi'"
   },
   "exports": {
     ".": {
@@ -35,6 +36,7 @@
     "@types/node": "catalog:",
     "@jainparichay/config-typescript": "^0.1.0",
     "eslint": "catalog:dev-tools",
+    "prisma": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
