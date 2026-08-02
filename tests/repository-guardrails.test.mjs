@@ -6,6 +6,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const rootDir = new URL('../', import.meta.url);
 const execFileAsync = promisify(execFile);
@@ -226,29 +227,24 @@ test('api production startup applies migrations before starting the server', asy
   assert.match(dockerfile, /prisma generate/);
 });
 
-// This test intentionally excludes `node_modules` from the isolated copy so
-// the copy step stays fast and deterministic (the real workspace
-// `node_modules` is large and irrelevant to what `pnpm deploy` produces from
-// the lockfile/store). One consequence: `apps/api/node_modules` does not
-// exist yet when `pnpm deploy`'s source-workspace pass runs the `postinstall`
-// hook, so `scripts/prisma.mjs generate` legitimately no-ops there (see its
-// own "pnpm deploy source pass" comment) rather than actually generating a
-// Prisma Client. This test therefore verifies deploy-path *structure* —
-// `@jainparichay/db`'s static Prisma artifacts (config, schema, migrations)
-// land in the deployed tree and its bundled `prisma` CLI is runnable from
-// there — but it does NOT exercise or guard `prisma generate` /
-// `@prisma/client` generation. That path is covered by the Dockerfiles
-// (`apps/api/Dockerfile`, `apps/web-host/Dockerfile`), which regenerate the
-// client after `pnpm deploy` against a fully installed tree.
-// SKIPPED: known-broken since `b049601` (Move the Prisma schema into
-// apps/api), owned by Task 8. Root cause: `prisma` is listed under
-// apps/api's `devDependencies`, so `pnpm deploy --prod` strips it from the
-// deployed tree; the deployed `postinstall` (`prisma generate`) then fails
-// with `sh: prisma: command not found`, so `pnpm deploy` itself exits
-// non-zero before this test can assert anything about the deploy output.
-// Fix belongs in apps/api/package.json (move `prisma` to `dependencies`),
-// which is Task 8's responsibility — re-enable this test once that lands.
-test.skip('api production deploy includes a runnable Prisma migration artifact', async () => {
+// This test copies the whole workspace (minus `.git`/`.turbo`/`node_modules`)
+// and runs a full `pnpm install --frozen-lockfile` before `pnpm deploy`,
+// mirroring the real sequence in `apps/api/Dockerfile` (which runs a full
+// install against the complete source tree before its `pnpm deploy` step).
+// That install is not optional overhead: apps/api's schema now lives in the
+// app itself (`apps/api/prisma/`), and its `postinstall` is a plain
+// `prisma generate` with no fallback for an uninstalled tree (unlike the
+// `scripts/prisma.mjs` this replaced, which special-cased a missing
+// `apps/api/node_modules` as a `pnpm deploy` "source pass" no-op). Skipping
+// the install and jumping straight to `pnpm deploy` reproduces that exact
+// gap: `pnpm deploy` resolves and links `apps/api`'s dependencies (including
+// `prisma`) into the isolated tree as part of the same operation, but the
+// `prisma` binary in `node_modules/.bin` was observed not yet present at the
+// moment the postinstall script runs, so it fails with `sh: prisma: command
+// not found` even though `prisma` is correctly declared in `dependencies`.
+// A preceding full install avoids this ordering gap entirely, exactly as
+// the Dockerfiles' own build sequence does.
+test('api production deploy includes a runnable Prisma migration artifact', async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'api-production-deploy-'));
   const isolatedRepoDir = path.join(tempDir, 'repo');
   const deployDir = path.join(tempDir, 'deploy');
@@ -265,6 +261,10 @@ test.skip('api production deploy includes a runnable Prisma migration artifact',
       },
     });
 
+    await execFileAsync('corepack', ['pnpm', 'install', '--frozen-lockfile'], {
+      cwd: isolatedRepoDir,
+    });
+
     await execFileAsync(
       'corepack',
       [
@@ -279,13 +279,17 @@ test.skip('api production deploy includes a runnable Prisma migration artifact',
       { cwd: isolatedRepoDir },
     );
 
-    const dbDir = path.join(deployDir, 'node_modules', '@jainparichay', 'db');
+    // apps/api is its own deploy root (see apps/api/Dockerfile and
+    // docker-entrypoint.sh), so its schema, migrations, and
+    // `prisma.config.ts` land directly under the deploy root rather than
+    // nested inside a `@jainparichay/db` package directory — the schema is
+    // app-owned now, not shipped by the shared package.
     await Promise.all([
-      stat(path.join(dbDir, 'prisma.config.ts')),
-      stat(path.join(dbDir, 'prisma', 'schema.prisma')),
+      stat(path.join(deployDir, 'prisma.config.ts')),
+      stat(path.join(deployDir, 'prisma', 'schema.prisma')),
       stat(
         path.join(
-          dbDir,
+          deployDir,
           'prisma',
           'migrations',
           '20250629120000_init',
@@ -294,19 +298,16 @@ test.skip('api production deploy includes a runnable Prisma migration artifact',
       ),
     ]);
 
-    // `@jainparichay/db`'s `prisma.config.ts` throws if `DATABASE_URL` is
-    // unset, even for `--version` (it loads config eagerly). `--version`
-    // never connects to a database, so a placeholder is sufficient.
+    // `apps/api`'s `prisma.config.ts` throws if `DATABASE_URL` is unset,
+    // even for `--version` (it loads config eagerly). `--version` never
+    // connects to a database, so a placeholder is sufficient. No `cd` is
+    // needed (unlike the web-host case elsewhere in this file) because
+    // apps/api is the deploy root itself.
     const { stdout } = await execFileAsync(
       '/bin/sh',
-      [
-        '-c',
-        'cd -P "$1" && PATH="$PWD/node_modules/.bin:$PATH" prisma --version',
-        'sh',
-        dbDir,
-      ],
+      ['-c', 'PATH="$PWD/node_modules/.bin:$PATH" prisma --version'],
       {
-        cwd: isolatedRepoDir,
+        cwd: deployDir,
         env: { ...process.env, DATABASE_URL: 'postgresql://placeholder' },
       },
     );
@@ -314,6 +315,45 @@ test.skip('api production deploy includes a runnable Prisma migration artifact',
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+});
+
+// `@jainparichay/db@0.2.1` deliberately ships no Prisma schema of its own —
+// the schema is app-owned (see `apps/api/prisma/`). This guards against a
+// future published version quietly re-introducing one, which would silently
+// resurrect the exact coupling (a shared package's schema needing to match
+// one app's data model) that this migration removed. Resolve the installed
+// package's location via Node's own module resolution (survives hoisting
+// differences) rather than hardcoding a `node_modules` path.
+test('@jainparichay/db ships no prisma/ directory (mechanism only)', async (t) => {
+  const apiPackageJsonPath = fileURLToPath(
+    new URL('apps/api/package.json', rootDir),
+  );
+  let dbEntryPoint;
+
+  try {
+    dbEntryPoint =
+      createRequire(apiPackageJsonPath).resolve('@jainparichay/db');
+  } catch (error) {
+    if (error?.code === 'MODULE_NOT_FOUND') {
+      t.skip('@jainparichay/db is not installed (run `pnpm install` first)');
+      return;
+    }
+    throw error;
+  }
+
+  // The resolved entry point is `dist/index.{js,cjs}`; the package root is
+  // one level above `dist`.
+  const dbPackageRoot = path.join(path.dirname(dbEntryPoint), '..');
+  const hasPrismaDirectory = await stat(path.join(dbPackageRoot, 'prisma'))
+    .then((stats) => stats.isDirectory())
+    .catch(() => false);
+
+  assert.equal(
+    hasPrismaDirectory,
+    false,
+    '@jainparichay/db must not ship a prisma/ directory — schemas belong ' +
+      "in the consuming app's own package",
+  );
 });
 
 test('workspace package manifests keep shared graph invariants', async () => {

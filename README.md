@@ -2,7 +2,7 @@
 
 Stop spending the first stretch of a new project wiring the same architecture from scratch.
 
-This starter gives you a full-stack TypeScript monorepo with the core pieces already connected: an Astro + React web app, a NestJS + tRPC API, shared UI, shared types, shared i18n helpers, reusable TypeScript configs, Turborepo task orchestration, Git hooks, and CI checks.
+This starter gives you a full-stack TypeScript monorepo with the core pieces already connected: an Astro + React web app, a NestJS + tRPC API, shared i18n and storage helpers, shared database-connection mechanism, reusable TypeScript configs, Turborepo task orchestration, Git hooks, and CI checks.
 
 ![A developer surrounded by messy setup work that resolves into a clean monorepo architecture board.](./docs/assets/template-architecture-pain.png)
 
@@ -29,13 +29,16 @@ apps/
   api            NestJS + tRPC sample API
 ```
 
-Shared code — UI components, types/contracts, i18n helpers, database access, and reusable `tsconfig` presets — is no longer a local `packages/*` workspace. It is published from a separate repo, [github.com/JainParichay/packages](https://github.com/JainParichay/packages), and consumed here as versioned `@jainparichay/*` dependencies (`@jainparichay/ui`, `@jainparichay/types`, `@jainparichay/i18n`, `@jainparichay/storage`, `@jainparichay/db`, `@jainparichay/config-typescript`, `@jainparichay/ai`). Changes to that shared code belong in the packages repo, not here. See [docs/guides/pnpm-workspace.md](docs/guides/pnpm-workspace.md).
+Shared code — i18n helpers, storage helpers, database-connection mechanism, an OpenAI client wrapper, reusable UI primitives, and reusable `tsconfig` presets — is no longer a local `packages/*` workspace. It is published from a separate repo, [github.com/JainParichay/packages](https://github.com/JainParichay/packages), and consumed here as versioned `@jainparichay/*` dependencies (`@jainparichay/i18n`, `@jainparichay/storage`, `@jainparichay/db`, `@jainparichay/config-typescript`, `@jainparichay/ai`, and optionally `@jainparichay/ui`). Changes to that shared code belong in the packages repo, not here. See [docs/guides/pnpm-workspace.md](docs/guides/pnpm-workspace.md).
+
+**Shared packages contain mechanism only — no database schemas, no domain types, no visual design.** `@jainparichay/db` exports a Prisma-adapter helper (`createDatabaseClient`), not a schema; the schema lives in the app that owns its data model (`apps/api/prisma/` here). `@jainparichay/ui` exports layout/behavior primitives with no baked-in color palette; each product supplies its own brand styling on top. Anything specific to one app's data or design belongs in that app, not in a shared package — see the boundary called out again in [AGENTS.md](AGENTS.md#state-the-boundary).
 
 The sample app is intentionally real enough to prove the architecture:
 
-- The web app imports the published shared UI and i18n packages.
+- The web app imports the published shared i18n and storage packages.
+- The API imports the published `@jainparichay/db` package for its Prisma-adapter connection mechanism, while owning its own schema and migrations under `apps/api/prisma/`.
 - React islands call the typed tRPC API.
-- Frontend and backend code share contracts through the published `@jainparichay/types` package.
+- Frontend and backend code share contracts through the API's own tRPC router types (`AppRouter`), exported from `apps/api`.
 - Internal (in-repo) dependencies use `workspace:*`; external shared packages use their published semver range.
 - Turborepo runs build, lint, typecheck, and test tasks across the graph.
 
@@ -169,13 +172,16 @@ pnpm db:deploy
 pnpm db:studio
 ```
 
-The `db:*` scripts run `scripts/prisma.mjs`, which resolves the Prisma CLI and
-schema from the installed `@jainparichay/db` package (its `prisma.config.ts`
-points at its own bundled `schema.prisma` and `migrations/`) rather than a
-local `prisma/` folder in this repo. `db:generate` runs automatically on
-`pnpm install` via `apps/api`'s `postinstall`; `db:migrate`, `db:deploy`, and
-`db:studio` need `DATABASE_URL` set — `scripts/prisma.mjs` loads it from the
-root `.env` you created in Getting Started, so no extra setup is needed here.
+The root `db:*` scripts are thin `pnpm --filter @workspace-starter/api db:*`
+aliases — they run the plain Prisma CLI against `apps/api`'s own schema at
+`apps/api/prisma/schema.prisma` (see `apps/api/prisma.config.ts`), the same
+way any app-owned Prisma setup would. `@jainparichay/db` ships no schema of
+its own; it only supplies `createDatabaseClient`, the adapter helper
+`apps/api/src/prisma/client.ts` wraps around `@prisma/client`. `db:generate`
+runs automatically on `pnpm install` via `apps/api`'s `postinstall`;
+`db:migrate`, `db:deploy`, and `db:studio` need `DATABASE_URL` set —
+`apps/api/prisma.config.ts` loads it from `apps/api/.env` or the root `.env`
+you created in Getting Started, so no extra setup is needed here.
 
 Useful workspace-focused commands:
 

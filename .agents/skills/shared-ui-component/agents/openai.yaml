@@ -1,4 +1,4 @@
 interface:
   display_name: "Shared UI Component"
   short_description: "Build shared UI components correctly"
-  default_prompt: "Use $shared-ui-component to add a reusable React component (published as @jainparichay/ui) or an app-local component in apps/web."
+  default_prompt: "Use $shared-ui-component to add a reusable, mechanism-only React component (published as @jainparichay/ui, with no baked-in color palette) or an app-local component in apps/web."

@@ -77,22 +77,35 @@ token itself.
 
 ## Regenerating the Prisma Client after `pnpm deploy`
 
-`pnpm deploy --legacy` re-links `@jainparichay/db` from the content-addressable
-store into the deployed tree, which discards whatever Prisma Client was
+`apps/api` owns its Prisma schema (`apps/api/prisma/`) and its own
+`prisma.config.ts`; `@jainparichay/db` ships no schema of its own, only the
+`createDatabaseClient` connection mechanism `apps/api/src/prisma/client.ts`
+wraps around it. `pnpm deploy --legacy` rebuilds `node_modules` from the
+content-addressable store, which discards whatever Prisma Client was
 generated during the earlier build step (the generator has no custom
 `output`, so there is nothing else to preserve). Both Dockerfiles therefore
-run an explicit regenerate step against the deployed package directly:
+run an explicit regenerate step against wherever `apps/api`'s schema lands
+in the deployed tree — its own deploy root for `apps/api/Dockerfile`:
 
 ```bash
-cd -P /app/node_modules/@jainparichay/db \
+cd -P /app \
  && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
 ```
 
-`@jainparichay/db`'s `prisma.config.ts` throws if `DATABASE_URL` is unset —
-even for `generate`, which never connects to a database — so a placeholder
-value is supplied. If you change the deploy step or add a new deployable app
-that depends on `@jainparichay/db`, keep this regenerate step (or an
-equivalent) after its `pnpm deploy`.
+and the re-linked embedded dependency path for `apps/web-host/Dockerfile`,
+which deploys `@workspace-starter/api` as a `workspace:*` dependency rather
+than as its own deploy root (see `apps/web-host/docker-entrypoint.sh`):
+
+```bash
+cd -P /app/node_modules/@workspace-starter/api \
+ && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
+```
+
+`apps/api`'s `prisma.config.ts` throws if `DATABASE_URL` is unset — even for
+`generate`, which never connects to a database — so a placeholder value is
+supplied. If you change the deploy step or add a new deployable app with its
+own Prisma schema, keep an equivalent regenerate step after its
+`pnpm deploy`.
 
 ## Manual container release
 

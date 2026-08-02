@@ -44,7 +44,7 @@ Use the smallest semver bump that honestly communicates impact:
 - `minor`: backwards-compatible new feature or newly exported capability.
 - `major`: breaking change, migration requirement, removed or renamed public surface, changed default with meaningful impact.
 
-Select every affected workspace, not only the file directly edited. For example, bumping `@jainparichay/types` (published externally — its own changes are versioned in [the packages repo](https://github.com/JainParichay/packages), not here) to pick up a contract change that alters API and web behavior may require a changeset for each consuming workspace that ships a visible change as a result.
+Select every affected workspace, not only the file directly edited. For example, bumping `@jainparichay/db` (published externally — its own changes are versioned in [the packages repo](https://github.com/JainParichay/packages), not here) to pick up a mechanism change may require a changeset for each consuming workspace (`apps/api`, `apps/web-host`) that ships a visible change as a result. (`@jainparichay/types` was retired and nothing in this repo depends on it anymore — it never needs a changeset here again.)
 
 ## Writing The Changeset
 

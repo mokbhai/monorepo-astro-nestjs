@@ -3,14 +3,26 @@
 ## Who this is for
 
 You maintain an app that still carries its own local copies of what are now
-the `@jainparichay/*` shared packages (`ui`, `types`, `i18n`, `storage`,
-`db`, `config-typescript`, `ai`). Those packages used to live in every app's
-own `packages/*` workspace; updating one meant hand-editing every app that
-copied it. They have since been extracted into a separate public repo,
-[github.com/JainParichay/packages](https://github.com/JainParichay/packages),
-and published to GitHub Packages as `@jainparichay/<name>@0.1.0`. This
-template (`template-jp`) has already been migrated to consume them — it is
-the worked example this guide is drawn from.
+the `@jainparichay/*` shared packages (`i18n`, `storage`, `db`,
+`config-typescript`, `ai`, and optionally `ui`). Those packages used to live
+in every app's own `packages/*` workspace; updating one meant hand-editing
+every app that copied it. They have since been extracted into a separate
+public repo, [github.com/JainParichay/packages](https://github.com/JainParichay/packages),
+and published to GitHub Packages (versions vary per package — `db` is
+currently at `0.2.1`, the rest at `0.1.0`; check `pnpm view
+@jainparichay/<name> version` for the current one). This template
+(`template-jp`) has already been migrated to consume them — it is the
+worked example this guide is drawn from.
+
+Every `@jainparichay/*` package carries **mechanism only** — no database
+schemas, no domain types, no visual design. `@jainparichay/types` (a
+shared-contracts package that used to be part of this list) was retired for
+exactly that reason: its contents were one app's domain model, not a
+reusable mechanism. Do not migrate an app's own domain types to a shared
+package as part of this guide; keep them in the app. See the boundary
+statement in this repo's [`AGENTS.md`](../../AGENTS.md#state-the-boundary)
+and [`README.md`](../../README.md) for the rule this guide exists to
+uphold.
 
 Follow the steps in order. Each one calls out the specific mistake that cost
 real debugging time during this migration, so skipping ahead is likely to
@@ -103,7 +115,7 @@ Once the credential is in place, confirm it works before doing anything else
 in this guide:
 
 ```bash
-pnpm view @jainparichay/types version
+pnpm view @jainparichay/db version
 ```
 
 If this prints a version, the credential is good. If it 401s, fix that now —
@@ -140,10 +152,21 @@ quarantine rejects the lockfile.
 ## Step 3: Delete the app's local copies
 
 Delete the app's local `packages/<name>` directories for anything that is
-now published — `db`, `ui`, `types`, `i18n`, `storage`, `config-typescript`,
-`ai`. Do not keep them "just in case"; a local workspace package and a
-`@jainparichay/*` dependency of the same underlying code will silently
-diverge.
+now published as pure mechanism — `i18n`, `storage`, `config-typescript`,
+`ai`, and (if the app has one) `ui`. Do not keep them "just in case"; a
+local workspace package and a `@jainparichay/*` dependency of the same
+underlying code will silently diverge.
+
+**`db` is the one exception — do not delete the app's Prisma schema.**
+`@jainparichay/db` supplies only the database-connection mechanism
+(`createDatabaseClient`, a thin wrapper around `@prisma/adapter-pg`); it
+ships no `prisma/schema.prisma` and no migrations. If the app's local
+`packages/db` bundled a hand-rolled connection helper alongside its schema,
+delete only the helper and replace it with `@jainparichay/db` (see Step 5);
+move the schema and migrations into the app itself (for example
+`apps/<name>/prisma/`) if they aren't there already — they were never
+something to delete, only something to stop nesting inside a shared
+package.
 
 If the app has a package that is genuinely app-specific (not something two
 or more apps would share), keep it, but rename it under the app's own scope
@@ -162,8 +185,8 @@ In every `package.json` that depended on the local package via `workspace:*`
 ```json
 {
   "dependencies": {
-    "@jainparichay/db": "^0.1.0",
-    "@jainparichay/types": "^0.1.0"
+    "@jainparichay/db": "^0.2.1",
+    "@jainparichay/i18n": "^0.1.0"
   }
 }
 ```
@@ -191,90 +214,122 @@ of erroring.
 
 ## Step 5: Migrating a Prisma (`@jainparichay/db`) consumer
 
-This is the step most likely to go wrong, because the schema now lives
-_inside_ the published package rather than in your app's own `prisma/`
-folder, and three subtleties compound:
+The schema stays in your app. `@jainparichay/db` exports connection
+**mechanism only** — `createDatabaseClient`, `createPgAdapter`, and
+`requireDatabaseUrl`, built around `@prisma/adapter-pg` — and ships no
+`prisma/schema.prisma`, no migrations, and no generated Prisma Client. If
+you are migrating an app that was already on an older `@jainparichay/db`
+(before `0.2.0`), this undoes that coupling rather than extending it: the
+schema used to live inside the published package, and that is exactly the
+part of the old design this migration exists to remove.
 
-1. `@jainparichay/db` is not guaranteed to be hoisted to your workspace
-   root — don't hardcode a path like
-   `node_modules/@jainparichay/db/prisma/schema.prisma` relative to the
-   workspace root or the app directory.
-2. Running the `prisma` CLI with your app's own directory as `cwd` cannot
-   resolve `@prisma/client`, because `@prisma/client` is a dependency of
-   `@jainparichay/db`, not of your app — module resolution from your app's
-   directory never reaches it.
-3. `@jainparichay/db`'s `prisma.config.ts` throws if `DATABASE_URL` is
-   unset — and it's loaded even for `generate`, which never touches a
-   database. If your app runs `prisma generate` from a `postinstall` script
-   without a placeholder, `pnpm install` itself breaks on any machine or CI
-   run that hasn't set `DATABASE_URL` yet (which is the normal state before
-   your app's first `.env` is created).
+1. **Keep (or create) your app's own Prisma schema and migrations** under
+   the app's own directory — for example `apps/<name>/prisma/schema.prisma`
+   and `apps/<name>/prisma/migrations/`. This repo's
+   [`apps/api/prisma/`](../../apps/api/prisma/) is the reference layout.
+2. **Add `@prisma/adapter-pg` yourself.** `@jainparichay/db` declares it as
+   a `peerDependency` (`^7.0.0`), not something it pulls in for you — add it
+   to your app's `dependencies` alongside `prisma` and `@prisma/client`.
+   This repo's [`apps/api/package.json`](../../apps/api/package.json) pins
+   all three to the same `catalog:` entry.
+3. **Wrap `@prisma/client` with `createDatabaseClient`,** not the other way
+   around. This repo's
+   [`apps/api/src/prisma/client.ts`](../../apps/api/src/prisma/client.ts)
+   is the whole pattern:
 
-Don't hand-roll a fix for these. Copy
-[`scripts/prisma.mjs`](../../scripts/prisma.mjs) into your app (or via a
-shared internal tool if you maintain more than one Prisma-consuming app). It
-resolves `@jainparichay/db`'s on-disk directory by walking Node's own
-module-resolution search paths (survives hoisting changes), runs the
-`prisma` CLI with that directory as `cwd` (so `@prisma/client` resolves and
-`prisma.config.ts`'s `schema`/`migrations.path` fields are honored), and
-substitutes a placeholder `DATABASE_URL` only for `generate` while requiring
-a real one for every other subcommand.
+   ```ts
+   import { PrismaClient } from '@prisma/client';
+   import { createDatabaseClient } from '@jainparichay/db';
 
-Do **not** copy it verbatim if your Prisma-consuming app isn't `apps/api` —
-the script hardcodes that path in two constants near the top
-(`scripts/prisma.mjs:24-25`):
+   export const prisma = createDatabaseClient(
+     (adapter) => new PrismaClient({ adapter }),
+   );
 
-```js
-const apiPackageJson = path.join(repoRoot, 'apps', 'api', 'package.json');
-const apiNodeModules = path.join(repoRoot, 'apps', 'api', 'node_modules');
-```
+   export type { PrismaClient };
+   ```
 
-Change both to your app's actual directory. Getting this wrong is silent,
-not loud: if `apiNodeModules` doesn't exist, the script's error handling
-(`scripts/prisma.mjs:114-125`) treats that as pnpm's "source pass" case,
-prints a `warning: skipping prisma generate` line, and **exits 0** — so
-`pnpm install` still reports success. The failure only surfaces much later,
-as a runtime `PrismaClient did not initialize` error, which is far harder to
-trace back to a stale hardcoded path than an install-time failure would be.
+   `createDatabaseClient` reads `DATABASE_URL` (or an explicit
+   `connectionString` option) eagerly and throws if it's unset — this is
+   this app's existing hard-fail-at-startup behavior, not a bug to work
+   around with a placeholder. Outside production
+   (`NODE_ENV !== 'production'`) it also caches the constructed client per
+   connection string on `globalThis`, so a hot-reloading dev server doesn't
+   open a new connection pool on every reload; pass `{ cache: false }` to
+   opt out, or call `resetDatabaseClient()` to force a rebuild.
+   `@jainparichay/db` ships both an ESM and a CommonJS entry, so a
+   CommonJS app (like this repo's NestJS `apps/api`) can `require()`/import
+   it directly — no `await import()` needed, unlike most other
+   `@jainparichay/*` packages (see Step 8).
 
-Wire it up the way this repo's root [`package.json`](../../package.json)
-does:
+4. **Point `prisma.config.ts` at your own schema**, the ordinary Prisma way
+   — there is no shared-package path to resolve, because the schema was
+   never inside one to begin with. This repo's
+   [`apps/api/prisma.config.ts`](../../apps/api/prisma.config.ts) is a
+   plain `defineConfig({ schema: 'prisma/schema.prisma', migrations: {
+path: 'prisma/migrations' }, datasource: { url: databaseUrl } })`; adjust
+   the paths only if your schema lives somewhere other than `prisma/`
+   relative to the app's own directory. Load `.env` from every `cwd` your
+   app's scripts actually run with (see Step 9 below) — this repo's config
+   loads both `.env` and `../../.env` for exactly that reason.
+5. **Add a plain `postinstall`, and put `prisma` in `dependencies` — not
+   `devDependencies`.** This repo's
+   [`apps/api/package.json`](../../apps/api/package.json) does:
+
+   ```json
+   {
+     "scripts": {
+       "postinstall": "DATABASE_URL=\"${DATABASE_URL:-postgresql://placeholder}\" prisma generate"
+     },
+     "dependencies": {
+       "prisma": "catalog:"
+     }
+   }
+   ```
+
+   The placeholder is still needed: `prisma.config.ts` throws if
+   `DATABASE_URL` is unset even for `generate`, which never touches a
+   database, and a fresh clone or CI checkout won't have a real one yet.
+   `prisma` has to be a `dependency`, not a `devDependency`, even though it
+   is only ever invoked at install/build/migrate time: `pnpm deploy --prod`
+   strips `devDependencies` from the deployed tree, and this same
+   `postinstall` runs again inside that deployed tree (see Step 6), where
+   it needs `prisma` on `PATH`. Leaving `prisma` under `devDependencies` is
+   exactly the mistake that broke `pnpm deploy --prod` for this app during
+   this migration — don't repeat it.
+
+There is no resolver script to route the convenience commands through
+anymore; wire the root scripts straight to your app's own, the way this
+repo's root [`package.json`](../../package.json) does:
 
 ```json
 {
   "scripts": {
-    "db:generate": "node scripts/prisma.mjs generate",
-    "db:migrate": "node scripts/prisma.mjs migrate dev",
-    "db:deploy": "node scripts/prisma.mjs migrate deploy",
-    "db:studio": "node scripts/prisma.mjs studio"
+    "db:generate": "pnpm --filter <your-app-name> db:generate",
+    "db:migrate": "pnpm --filter <your-app-name> db:migrate",
+    "db:deploy": "pnpm --filter <your-app-name> db:deploy",
+    "db:studio": "pnpm --filter <your-app-name> db:studio"
   }
 }
 ```
 
-And add a `postinstall` plus the `prisma` devDependency to the app that owns
-the Prisma schema consumption, the way
+and in the app itself, the way
 [`apps/api/package.json`](../../apps/api/package.json) does:
 
 ```json
 {
   "scripts": {
-    "postinstall": "node ../../scripts/prisma.mjs generate"
-  },
-  "devDependencies": {
-    "prisma": "catalog:"
+    "db:generate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://placeholder}\" prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio"
   }
 }
 ```
 
-(Adjust the relative path to `scripts/prisma.mjs` if your app lives at a
-different depth than `apps/<name>`.)
-
-Right next to that `prisma` devDependency, add `allowBuilds` entries for the
-native toolchain `@jainparichay/db` pulls in, or the very first install
-fails with `ERR_PNPM_IGNORED_BUILDS` (pnpm 11's build-script approval gate
-blocks unrecognized native builds by default). Add the packages actually
-used by your Prisma setup, the way this repo's
-[`pnpm-workspace.yaml`](../../pnpm-workspace.yaml) does:
+Add `allowBuilds` entries for the native toolchain Prisma pulls in, or the
+very first install fails with `ERR_PNPM_IGNORED_BUILDS` (pnpm 11's
+build-script approval gate blocks unrecognized native builds by default).
+This repo's [`pnpm-workspace.yaml`](../../pnpm-workspace.yaml) does:
 
 ```yaml
 allowBuilds:
@@ -288,21 +343,27 @@ actually needs.)
 
 Two more things to update for a Prisma consumer:
 
-- Any `docker-entrypoint.sh` that `cd`s into a local `prisma/` folder before
-  running `prisma migrate deploy` must instead `cd` into the deployed
-  package directory. This repo's
-  [`apps/api/docker-entrypoint.sh`](../../apps/api/docker-entrypoint.sh) and
-  [`apps/web-host/docker-entrypoint.sh`](../../apps/web-host/docker-entrypoint.sh)
-  both do:
+- If your app is its own `pnpm deploy` root (the normal case — see Step 6),
+  `docker-entrypoint.sh` needs no `cd` at all before `prisma migrate
+deploy`: the schema and `node_modules/.bin` already live at the deploy
+  root's `$PWD`. This repo's
+  [`apps/api/docker-entrypoint.sh`](../../apps/api/docker-entrypoint.sh)
+  does:
 
   ```sh
-  cd -P /app/node_modules/@jainparichay/db
   PATH="$PWD/node_modules/.bin:$PATH"
   export PATH
   prisma migrate deploy
   ```
 
-- `DATABASE_URL` is now required with no fallback for every real command
+  Only `cd` into a nested directory if a _different_ app re-links yours as
+  an embedded `workspace:*` dependency and deploys from its own root
+  instead — see
+  [`apps/web-host/docker-entrypoint.sh`](../../apps/web-host/docker-entrypoint.sh),
+  which `cd`s into `node_modules/@workspace-starter/api` for exactly that
+  reason, and Step 7 below for why.
+
+- `DATABASE_URL` is required with no fallback for every real command
   (`migrate dev`, `migrate deploy`, `studio`) — only `generate` gets a
   placeholder. Make sure your environment setup docs and `.env.example`
   still set it before `db:deploy` is run for the first time; see this
@@ -364,16 +425,27 @@ Update every Dockerfile that installs dependencies for this app:
    were local workspace members), delete those lines — they now point at
    directories that no longer exist and will fail the build outright.
 
-3. **Regenerate the Prisma client after `pnpm deploy`.** `pnpm deploy`
-   rebuilds `node_modules` from the content-addressable store, which
-   discards whatever Prisma Client was generated during the build (the
-   generator has no custom `output`, so there's nothing else to preserve).
-   Add this after your `pnpm deploy` step, exactly as both
-   [`apps/api/Dockerfile`](../../apps/api/Dockerfile) and
-   [`apps/web-host/Dockerfile`](../../apps/web-host/Dockerfile) do:
+3. **Regenerate the Prisma client after `pnpm deploy`, against your app's
+   own deployed schema.** `pnpm deploy` rebuilds `node_modules` from the
+   content-addressable store, which discards whatever Prisma Client was
+   generated during the build (the generator has no custom `output`, so
+   there's nothing else to preserve). Add this after your `pnpm deploy`
+   step, `cd`ing into wherever your app's schema actually lands in the
+   deployed tree — the same distinction as Step 5's entrypoint note. If
+   your app is its own deploy root, as
+   [`apps/api/Dockerfile`](../../apps/api/Dockerfile) is:
 
    ```dockerfile
-   RUN cd -P /app/node_modules/@jainparichay/db \
+   RUN cd -P /app \
+    && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
+   ```
+
+   If a host app deploys your app as an embedded `workspace:*` dependency
+   instead, as [`apps/web-host/Dockerfile`](../../apps/web-host/Dockerfile)
+   does for `apps/api`:
+
+   ```dockerfile
+   RUN cd -P /app/node_modules/@workspace-starter/api \
     && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
    ```
 
@@ -440,14 +512,18 @@ nested `node_modules`, the same way any workspace package resolves its own
 dependencies, and mirroring them into the host would just create a second,
 independently-drifting copy of the served app's manifest.
 
-Concretely: if `apps/web` depends on `@jainparichay/{i18n,storage,types,ui}`
-and `apps/web-host` serves its built output, `apps/web-host`'s
-`package.json` must list all four as direct dependencies too. The same
-applies to `react`/`react-dom`, which Astro's SSR build externalizes the
-same way. Compare [`apps/web/package.json`](../../apps/web/package.json)
-and [`apps/web-host/package.json`](../../apps/web-host/package.json) in
-this repo — the overlap is intentional and required, not duplication to
-clean up.
+Concretely: `apps/web` depends on `@jainparichay/{i18n,storage}`, and
+`apps/web-host` serves its built output, so `apps/web-host`'s
+`package.json` lists both as direct dependencies too (plus
+`@jainparichay/db`, for `@workspace-starter/api`'s embedded dependency — a
+separate instance of the same rule). The same applies to `react`/
+`react-dom`, which Astro's SSR build externalizes the same way. Compare
+[`apps/web/package.json`](../../apps/web/package.json) and
+[`apps/web-host/package.json`](../../apps/web-host/package.json) in this
+repo — the overlap is intentional and required, not duplication to clean
+up. If your app adds `@jainparichay/ui` back (see the
+`shared-ui-component` skill's note that no app here currently depends on
+it), a host serving that app's output needs it mirrored the same way.
 
 Copy the guardrail test that catches this automatically:
 [`tests/repository-guardrails.test.mjs`](../../tests/repository-guardrails.test.mjs),
@@ -465,16 +541,16 @@ third-party package at build time).
 
 ## Step 8: ESM-only packages
 
-All `@jainparichay/*` packages are ESM-only **except** `@jainparichay/ui`.
-If any part of your app is still CommonJS, replace `require('@jainparichay/db')`
-(or `i18n`, `storage`, `types`, `ai`) with a dynamic import:
+Most `@jainparichay/*` packages are ESM-only **except** `@jainparichay/ui`
+and `@jainparichay/db`, which both additionally ship a CommonJS-compatible
+`require()` entry (this repo's CommonJS `apps/api` depends on
+`@jainparichay/db` directly for exactly this reason — see Step 5). If any
+part of your app is still CommonJS and needs `i18n`, `storage`, or `ai`,
+replace `require('@jainparichay/ai')` with a dynamic import instead:
 
 ```js
 const { createAiClient } = await import('@jainparichay/ai');
 ```
-
-`@jainparichay/ui` is the only package that also ships a CommonJS-compatible
-entry, so it can still be `require()`'d if needed.
 
 ## Step 9: Env files are not automatically found
 
@@ -513,7 +589,7 @@ pnpm test
 ```
 
 `pnpm install` triggers the `postinstall` from Step 5, which generates the
-Prisma client against the published schema. If this fails with
+Prisma client against your app's own schema. If this fails with
 `ERR_PNPM_FETCH_401`, re-check Step 1 — the most common cause is a token
 that only exists as `NODE_AUTH_TOKEN` in your shell without ever landing in
 a trusted npmrc.
