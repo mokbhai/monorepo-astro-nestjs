@@ -31,7 +31,6 @@
     "@trpc/server": "catalog:",
     "fastify": "^5.10.0",
     "@jainparichay/db": "^0.2.1",
-    "@jainparichay/types": "^0.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "catalog:"

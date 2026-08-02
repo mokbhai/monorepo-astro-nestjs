@@ -123,9 +123,6 @@ importers:
       '@jainparichay/db':
         specifier: ^0.2.1
         version: 0.2.1(@prisma/adapter-pg@7.9.0)
-      '@jainparichay/types':
-        specifier: ^0.1.0
-        version: 0.1.0
       '@nestjs/common':
         specifier: ^11.1.28
         version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1)
@@ -218,12 +215,6 @@ importers:
       '@jainparichay/storage':
         specifier: ^0.1.0
         version: 0.1.0
-      '@jainparichay/types':
-        specifier: ^0.1.0
-        version: 0.1.0
-      '@jainparichay/ui':
-        specifier: ^0.1.0
-        version: 0.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tanstack/react-query':
         specifier: ^5.101.4
         version: 5.101.4(react@19.2.8)
@@ -300,12 +291,6 @@ importers:
       '@jainparichay/storage':
         specifier: ^0.1.0
         version: 0.1.0
-      '@jainparichay/types':
-        specifier: ^0.1.0
-        version: 0.1.0
-      '@jainparichay/ui':
-        specifier: ^0.1.0
-        version: 0.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@workspace-starter/api':
         specifier: workspace:*
         version: link:../api
@@ -1357,15 +1342,6 @@ packages:
 
   '@jainparichay/storage@0.1.0':
     resolution: {integrity: sha512-SLPPSInUKmi2YBzuNlpTmxT9201vuJiPy70WbeMwefD6BfgxipdBVBWrBi0nvOyl1dFi5Dx+Ls2ttE575QscwQ==, tarball: https://npm.pkg.github.com/download/@jainparichay/storage/0.1.0/2171aa2b80a272fe63960981f5905081db7c094f}
-
-  '@jainparichay/types@0.1.0':
-    resolution: {integrity: sha512-931KNI3/ZTFMTu8MgbMrKAGNhdP/wBqKoQ9ZPI0V2Yik+N6nYgfnR5Viqw0WQM3wAbio6nSsBsGFD06Y2iuHwQ==, tarball: https://npm.pkg.github.com/download/@jainparichay/types/0.1.0/d9e4e3353b827e7b78bd13757af775d1f1adc7e4}
-
-  '@jainparichay/ui@0.1.0':
-    resolution: {integrity: sha512-Kx8tB56K+hFKk+Sa5Tmn66Zkb1uBnh+0GWNWjRHob1zj49X5vaiXHFRhRfqpliQMYOvId4dFfJgPRoBUtr40RA==, tarball: https://npm.pkg.github.com/download/@jainparichay/ui/0.1.0/71bbfe0f55887e39bf9a395147b6bb9b27ad8f1e}
-    peerDependencies:
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2673,9 +2649,6 @@ packages:
   ci-info@4.4.0:
     resolution: {integrity: sha512-77PSwercCZU2Fc4sX94eF8k8Pxte6JAwL4/ICZLFjJLqegs7kCuAsqqj/70NQF6TvDpgFjkubQB2FW2ZZddvQg==}
     engines: {node: '>=8'}
-
-  class-variance-authority@0.7.1:
-    resolution: {integrity: sha512-Ka+9Trutv7G8M6WT6SeiRWz792K5qEqIGEGzXKhAE6xOWAY6pPH8U+9IY3oCMv6kqTmLsv7Xh/2w2RigkePMsg==}
 
   classnames@2.5.1:
     resolution: {integrity: sha512-saHYOzhIQs6wy2sVxTM6bUDsQO4F50V9RQ22qBpEdCW+I+/Wmke2HOl6lS6dTpdxVhb88/I6+Hs+438c3lfUow==}
@@ -4456,9 +4429,6 @@ packages:
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
 
-  tailwind-merge@3.6.0:
-    resolution: {integrity: sha512-uxL7qAVQriqRQPAyK3pj66VqskWqoZ37PW94jwOTwNfq/z9oyu1V+eqrZqtR2+fCiXdYOZe/Modt8GtvqNzu+w==}
-
   tailwindcss@4.3.3:
     resolution: {integrity: sha512-gOhV3P7ufE62QDGg1zVaTgCR+EtPv92k2nIhVcVKcLmxT1sUBsQGhnZj175j+MqRt4zLF7ic+sCYjfhxMxj7YQ==}
 
@@ -6129,16 +6099,6 @@ snapshots:
 
   '@jainparichay/storage@0.1.0': {}
 
-  '@jainparichay/types@0.1.0': {}
-
-  '@jainparichay/ui@0.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
-    dependencies:
-      class-variance-authority: 0.7.1
-      clsx: 2.1.1
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
-      tailwind-merge: 3.6.0
-
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -7590,10 +7550,6 @@ snapshots:
   chrome-trace-event@1.0.4: {}
 
   ci-info@4.4.0: {}
-
-  class-variance-authority@0.7.1:
-    dependencies:
-      clsx: 2.1.1
 
   classnames@2.5.1: {}
 
@@ -9403,8 +9359,6 @@ snapshots:
   symbol-observable@4.0.0: {}
 
   symbol-tree@3.2.4: {}
-
-  tailwind-merge@3.6.0: {}
 
   tailwindcss@4.3.3: {}
 
