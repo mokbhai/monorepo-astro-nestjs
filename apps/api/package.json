@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" \"vitest.config.ts\"",
     "test": "vitest run",
-    "postinstall": "sh -c 'if [ -d node_modules/@jainparichay/db ]; then cd node_modules/@jainparichay/db && ./node_modules/.bin/prisma generate; fi'"
+    "postinstall": "node ../../scripts/prisma.mjs generate"
   },
   "exports": {
     ".": {
