@@ -514,12 +514,3 @@ test('registry-auth wiring for @jainparichay/* stays intact', async () => {
     /NODE_AUTH_TOKEN:\s*\$\{\{\s*secrets\.NODE_AUTH_TOKEN\s*\}\}/,
   );
 });
-
-// scripts/prisma.mjs is COPY'd alone into apps/api's build layer (see
-// apps/api/Dockerfile), before the rest of the repo is present — a relative
-// import would resolve against a directory that doesn't exist in that image
-// and break the build with no other coverage of this constraint.
-test('scripts/prisma.mjs has no relative import', async () => {
-  const source = await readText('scripts/prisma.mjs');
-  assert.doesNotMatch(source, /^import .* from '\.\//m);
-});

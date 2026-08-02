@@ -5,9 +5,8 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import type { PrismaClient } from '@jainparichay/db' with {
-  'resolution-mode': 'import',
-};
+import type { PrismaClient } from './client';
+import { getPrisma } from './client';
 
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
@@ -18,8 +17,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    const { prisma } = await import('@jainparichay/db');
-    this.client = prisma;
+    this.client = await getPrisma();
     await this.client.$connect();
   }
 

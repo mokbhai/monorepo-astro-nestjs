@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@workspace-starter/api": "workspace:*",
-    "@jainparichay/db": "^0.1.0",
+    "@jainparichay/db": "^0.2.0",
     "@jainparichay/i18n": "^0.1.0",
     "@jainparichay/storage": "^0.1.0",
     "@jainparichay/types": "^0.1.0",

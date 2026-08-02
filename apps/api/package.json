@@ -9,7 +9,11 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" \"vitest.config.ts\"",
     "test": "vitest run",
-    "postinstall": "node ../../scripts/prisma.mjs generate"
+    "postinstall": "DATABASE_URL=\"${DATABASE_URL:-postgresql://placeholder}\" prisma generate",
+    "db:generate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://placeholder}\" prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio"
   },
   "exports": {
     ".": {
@@ -22,9 +26,11 @@
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.28",
     "@nestjs/platform-fastify": "^11.1.28",
+    "@prisma/adapter-pg": "catalog:",
+    "@prisma/client": "catalog:",
     "@trpc/server": "catalog:",
     "fastify": "^5.10.0",
-    "@jainparichay/db": "^0.1.0",
+    "@jainparichay/db": "^0.2.0",
     "@jainparichay/types": "^0.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -35,6 +41,7 @@
     "@nestjs/schematics": "^11.1.0",
     "@types/node": "catalog:",
     "@jainparichay/config-typescript": "^0.1.0",
+    "dotenv": "catalog:",
     "eslint": "catalog:dev-tools",
     "prisma": "catalog:",
     "typescript": "catalog:",

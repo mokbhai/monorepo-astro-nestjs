@@ -1,17 +1,5 @@
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
-import type { PrismaClient } from '@jainparichay/db' with {
-  'resolution-mode': 'import',
-};
-
-let dbClient: PrismaClient | undefined;
-
-async function getDbClient(): Promise<PrismaClient> {
-  if (!dbClient) {
-    ({ prisma: dbClient } = await import('@jainparichay/db'));
-  }
-
-  return dbClient;
-}
+import { getPrisma } from '../prisma/client';
 
 // Extend this with redis, user, etc. as the app grows
 export async function createContext({ req, res }: CreateFastifyContextOptions) {
@@ -22,7 +10,7 @@ export async function createContext({ req, res }: CreateFastifyContextOptions) {
     req,
     res,
     user,
-    db: await getDbClient(),
+    db: await getPrisma(),
   };
 }
 

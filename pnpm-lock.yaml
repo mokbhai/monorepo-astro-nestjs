@@ -6,6 +6,12 @@ settings:
 
 catalogs:
   default:
+    '@prisma/adapter-pg':
+      specifier: ^7.9.0
+      version: 7.9.0
+    '@prisma/client':
+      specifier: ^7.9.0
+      version: 7.9.0
     '@tailwindcss/vite':
       specifier: ^4.3.3
       version: 4.3.3
@@ -36,6 +42,9 @@ catalogs:
     '@types/react-dom':
       specifier: ^19.2.3
       version: 19.2.3
+    dotenv:
+      specifier: ^17.4.2
+      version: 17.4.2
     jsdom:
       specifier: ^29.1.1
       version: 29.1.1
@@ -112,8 +121,8 @@ importers:
   apps/api:
     dependencies:
       '@jainparichay/db':
-        specifier: ^0.1.0
-        version: 0.1.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+        specifier: ^0.2.0
+        version: 0.2.0(@prisma/adapter-pg@7.9.0)
       '@jainparichay/types':
         specifier: ^0.1.0
         version: 0.1.0
@@ -129,6 +138,12 @@ importers:
       '@nestjs/platform-fastify':
         specifier: ^11.1.28
         version: 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(reflect-metadata@0.2.2)(rxjs@7.8.2))
+      '@prisma/adapter-pg':
+        specifier: 'catalog:'
+        version: 7.9.0
+      '@prisma/client':
+        specifier: 'catalog:'
+        version: 7.9.0(prisma@7.9.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
       '@trpc/server':
         specifier: 'catalog:'
         version: 11.18.0(typescript@6.0.3)
@@ -157,6 +172,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.1
+      dotenv:
+        specifier: 'catalog:'
+        version: 17.4.2
       eslint:
         specifier: catalog:dev-tools
         version: 10.8.0(jiti@2.7.0)(supports-color@8.1.1)
@@ -274,8 +292,8 @@ importers:
   apps/web-host:
     dependencies:
       '@jainparichay/db':
-        specifier: ^0.1.0
-        version: 0.1.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+        specifier: ^0.2.0
+        version: 0.2.0(@prisma/adapter-pg@7.9.0)
       '@jainparichay/i18n':
         specifier: ^0.1.0
         version: 0.1.0
@@ -1329,8 +1347,10 @@ packages:
   '@jainparichay/config-typescript@0.1.0':
     resolution: {integrity: sha512-HTJ00d2+GnNAo9BtmLTmmrp3NeW5+Iw6IK8v1Sq+9F9zulzaC8jHILXkCVnqx/S85M846yT0b64a5SWWUXv+SQ==, tarball: https://npm.pkg.github.com/download/@jainparichay/config-typescript/0.1.0/f573cf72de3500ca1fbff0a8fa8d3338c318a10f}
 
-  '@jainparichay/db@0.1.0':
-    resolution: {integrity: sha512-UBbxQha0ET0NKNV+QmBqRIS+6h7mT15dPHamB/hH1GZ8knmwxHSoBuoPqs4qZjgUbxqI5AFrEqNtrm37njI7oQ==, tarball: https://npm.pkg.github.com/download/@jainparichay/db/0.1.0/a4514ba2a083a608338aca19da87b5208e0a9bdf}
+  '@jainparichay/db@0.2.0':
+    resolution: {integrity: sha512-vu7x5kDd0ve5C3pGwNK1fN9c7o6o+rUjun4KGUcUCkjZzJ4ez1nfSOL4SvVNiMQ0RlOKJdC7AosKnIQ6u8v3BQ==, tarball: https://npm.pkg.github.com/download/@jainparichay/db/0.2.0/4cc8986148ddacee9db8d5f14997fb80979cae82}
+    peerDependencies:
+      '@prisma/adapter-pg': ^7.0.0
 
   '@jainparichay/i18n@0.1.0':
     resolution: {integrity: sha512-WFggzKvNFj4F510e1sbHy43sWvtvQfjQ7I1WK1tasUQsgiE3ElaQfMdI6jSCSl9eJEmHBAmKsBuoOnWH7Qr0hA==, tarball: https://npm.pkg.github.com/download/@jainparichay/i18n/0.1.0/d35d367c2dfa2437a1be0e7a3415e7394dafdbcd}
@@ -6101,22 +6121,9 @@ snapshots:
 
   '@jainparichay/config-typescript@0.1.0': {}
 
-  '@jainparichay/db@0.1.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)':
+  '@jainparichay/db@0.2.0(@prisma/adapter-pg@7.9.0)':
     dependencies:
       '@prisma/adapter-pg': 7.9.0
-      '@prisma/client': 7.9.0(prisma@7.9.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
-      dotenv: 17.4.2
-      pg: 8.22.0
-      prisma: 7.9.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
-    transitivePeerDependencies:
-      - '@types/react'
-      - '@types/react-dom'
-      - better-sqlite3
-      - magicast
-      - pg-native
-      - react
-      - react-dom
-      - typescript
 
   '@jainparichay/i18n@0.1.0': {}
 
@@ -6318,7 +6325,7 @@ snapshots:
 
   '@prisma/client-runtime-utils@7.9.0': {}
 
-  '@prisma/client@7.9.0(prisma@7.9.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)':
+  '@prisma/client@7.9.0(prisma@7.9.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)':
     dependencies:
       '@prisma/client-runtime-utils': 7.9.0
     optionalDependencies:

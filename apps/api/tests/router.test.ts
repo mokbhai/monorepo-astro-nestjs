@@ -4,8 +4,8 @@ const mockFindMany = vi.fn();
 const mockFindUnique = vi.fn();
 const mockCreate = vi.fn();
 
-vi.mock('@jainparichay/db', () => ({
-  prisma: {
+vi.mock('../src/prisma/client', () => ({
+  getPrisma: vi.fn().mockResolvedValue({
     user: {
       findMany: mockFindMany,
       findUnique: mockFindUnique,
@@ -13,7 +13,7 @@ vi.mock('@jainparichay/db', () => ({
     },
     $connect: vi.fn(),
     $disconnect: vi.fn(),
-  },
+  }),
 }));
 
 import { appRouter } from '../src/trpc/router';

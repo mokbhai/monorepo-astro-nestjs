@@ -55,6 +55,7 @@ catalog:
 
   openai: ^6.49.0
 
+  dotenv: ^17.4.2
   prisma: ^7.9.0
   '@prisma/client': ^7.9.0
   '@prisma/adapter-pg': ^7.9.0
