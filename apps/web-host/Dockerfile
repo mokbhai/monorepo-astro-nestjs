@@ -19,10 +19,15 @@ RUN npm install --global corepack@0.34.7 && corepack enable
 # layer. pnpm-workspace.yaml must also be present at fetch time: it carries
 # `minimumReleaseAgeExclude: ['@jainparichay/*']`, and without it `pnpm
 # fetch` applies the default 7-day supply-chain quarantine to our own
-# just-published packages and rejects the lockfile.
+# just-published packages and rejects the lockfile. Fail fast (rather than
+# ~45s later with an unattributed 401) if the secret is empty, which happens
+# when NODE_AUTH_TOKEN isn't set when invoking `docker build`/`docker
+# compose build`.
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 RUN --mount=type=secret,id=node_auth_token \
-    printf '//npm.pkg.github.com/:_authToken=%s\n' "$(cat /run/secrets/node_auth_token)" > /root/.npmrc \
+    tok="$(cat /run/secrets/node_auth_token)"; \
+    [ -n "$tok" ] || { echo "error: NODE_AUTH_TOKEN must be set to fetch @jainparichay/* from GitHub Packages" >&2; exit 1; }; \
+    printf '//npm.pkg.github.com/:_authToken=%s\n' "$tok" > /root/.npmrc \
  && pnpm fetch \
  && rm -f /root/.npmrc
 
@@ -49,19 +54,21 @@ RUN node scripts/build-frontends.mjs
 # `--ignore-scripts` is safe here. Registry auth is needed again too: this
 # re-resolves `@jainparichay/*` into the fresh deploy-target store.
 RUN --mount=type=secret,id=node_auth_token \
-    printf '//npm.pkg.github.com/:_authToken=%s\n' "$(cat /run/secrets/node_auth_token)" > /root/.npmrc \
+    tok="$(cat /run/secrets/node_auth_token)"; \
+    [ -n "$tok" ] || { echo "error: NODE_AUTH_TOKEN must be set to fetch @jainparichay/* from GitHub Packages" >&2; exit 1; }; \
+    printf '//npm.pkg.github.com/:_authToken=%s\n' "$tok" > /root/.npmrc \
  && pnpm deploy --legacy --filter @workspace-starter/web-host --prod --ignore-scripts /app \
  && rm -f /root/.npmrc
 
 # `pnpm deploy` rebuilds /app/node_modules from the content-addressable store,
 # which discards the Prisma Client generated during the build. The generator
 # has no custom output, so regenerate it inside the deployed tree. This is an
-# inline command rather than a call to scripts/prisma.mjs: that helper
-# resolves paths relative to the monorepo layout (apps/web-host/package.json,
-# apps/web-host/node_modules), which no longer exists once `pnpm deploy` has
-# flattened the tree into /app. `@jainparichay/db`'s prisma.config.ts throws
-# if DATABASE_URL is unset (it's loaded even for `generate`), so supply a
-# placeholder — this never connects to a database.
+# inline command rather than a call to scripts/prisma.mjs: `pnpm deploy`
+# never copies scripts/ into /app at all, and even if it were present there,
+# `--prod` means the `prisma` devDependency the script shells out to isn't
+# installed in the deployed tree. `@jainparichay/db`'s prisma.config.ts
+# throws if DATABASE_URL is unset (it's loaded even for `generate`), so
+# supply a placeholder — this never connects to a database.
 RUN cd -P /app/node_modules/@jainparichay/db \
  && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
 

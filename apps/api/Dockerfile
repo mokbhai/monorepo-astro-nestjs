@@ -16,15 +16,23 @@ COPY apps/api/package.json apps/api/package.json
 # helper must exist on disk before `pnpm install` below (which triggers that
 # hook) — the rest of the source tree isn't copied until after the install
 # layer, to keep dependency resolution cached independent of source changes.
+# scripts/prisma.mjs must stay free of local imports (only node: builtins):
+# it is the only file from scripts/ copied into this layer, so anything it
+# imports from a sibling module would fail to resolve here with no test
+# covering the break.
 COPY scripts/prisma.mjs scripts/prisma.mjs
 
 # `@jainparichay/*` is fetched from GitHub Packages, which requires auth. The
 # committed .npmrc supplies only the registry mapping (see Task 8); the
 # credential itself is mounted as a BuildKit secret and written to a
 # user-level npmrc that pnpm trusts, then removed in the same layer so it
-# never persists in an image layer.
+# never persists in an image layer. Fail fast (rather than ~45s later with an
+# unattributed 401) if the secret is empty, which happens when NODE_AUTH_TOKEN
+# isn't set when invoking `docker build`/`docker compose build`.
 RUN --mount=type=secret,id=node_auth_token \
-    printf '//npm.pkg.github.com/:_authToken=%s\n' "$(cat /run/secrets/node_auth_token)" > /root/.npmrc \
+    tok="$(cat /run/secrets/node_auth_token)"; \
+    [ -n "$tok" ] || { echo "error: NODE_AUTH_TOKEN must be set to fetch @jainparichay/* from GitHub Packages" >&2; exit 1; }; \
+    printf '//npm.pkg.github.com/:_authToken=%s\n' "$tok" > /root/.npmrc \
  && pnpm install --frozen-lockfile \
  && rm -f /root/.npmrc
 
@@ -34,9 +42,15 @@ COPY . .
 # pnpm's automatic pre-run dependency check (`verify-deps-before-run`, on by
 # default) notices those importers now exist and silently re-installs the
 # full workspace before `turbo` runs — which needs registry auth again, for
-# the same reason as the install above.
+# the same reason as the install above. That implicit re-install is not
+# `--frozen-lockfile` on its own, so make one explicit here: it's a no-op
+# when the manifests and lockfile already agree, and it fails loudly instead
+# of silently re-resolving against a stale lockfile if they ever don't.
 RUN --mount=type=secret,id=node_auth_token \
-    printf '//npm.pkg.github.com/:_authToken=%s\n' "$(cat /run/secrets/node_auth_token)" > /root/.npmrc \
+    tok="$(cat /run/secrets/node_auth_token)"; \
+    [ -n "$tok" ] || { echo "error: NODE_AUTH_TOKEN must be set to fetch @jainparichay/* from GitHub Packages" >&2; exit 1; }; \
+    printf '//npm.pkg.github.com/:_authToken=%s\n' "$tok" > /root/.npmrc \
+ && pnpm install --frozen-lockfile \
  && pnpm turbo build --filter=@workspace-starter/api... \
  && pnpm deploy --legacy --filter @workspace-starter/api --prod /app \
  && rm -f /root/.npmrc
@@ -44,12 +58,12 @@ RUN --mount=type=secret,id=node_auth_token \
 # `pnpm deploy` rebuilds /app/node_modules from the content-addressable store,
 # which discards the Prisma Client generated during the build. The generator
 # has no custom output, so regenerate it inside the deployed tree. This is an
-# inline command rather than a call to scripts/prisma.mjs: that helper
-# resolves paths relative to the monorepo layout (apps/api/package.json,
-# apps/api/node_modules), which no longer exists once `pnpm deploy` has
-# flattened the tree into /app. `@jainparichay/db`'s prisma.config.ts throws
-# if DATABASE_URL is unset (it's loaded even for `generate`), so supply a
-# placeholder — this never connects to a database.
+# inline command rather than a call to scripts/prisma.mjs: `pnpm deploy`
+# never copies scripts/ into /app at all, and even if it were present there,
+# `--prod` means the `prisma` devDependency the script shells out to isn't
+# installed in the deployed tree. `@jainparichay/db`'s prisma.config.ts
+# throws if DATABASE_URL is unset (it's loaded even for `generate`), so
+# supply a placeholder — this never connects to a database.
 RUN cd -P /app/node_modules/@jainparichay/db \
  && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
 
