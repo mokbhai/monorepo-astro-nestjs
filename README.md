@@ -27,19 +27,16 @@ apps/
   secondary-web  Second Astro app for deployment strategy testing
   web-host       Node static host that serves both Astro builds
   api            NestJS + tRPC sample API
-packages/
-  ui             Shared React UI components
-  types          Shared types and contracts
-  i18n           Shared localization helpers and validation
-  config-typescript  Reusable tsconfig presets
 ```
+
+Shared code — UI components, types/contracts, i18n helpers, database access, and reusable `tsconfig` presets — is no longer a local `packages/*` workspace. It is published from a separate repo, [github.com/JainParichay/packages](https://github.com/JainParichay/packages), and consumed here as versioned `@jainparichay/*` dependencies (`@jainparichay/ui`, `@jainparichay/types`, `@jainparichay/i18n`, `@jainparichay/storage`, `@jainparichay/db`, `@jainparichay/config-typescript`, `@jainparichay/ai`). Changes to that shared code belong in the packages repo, not here. See [docs/guides/pnpm-workspace.md](docs/guides/pnpm-workspace.md).
 
 The sample app is intentionally real enough to prove the architecture:
 
-- The web app imports shared UI and i18n packages.
+- The web app imports the published shared UI and i18n packages.
 - React islands call the typed tRPC API.
-- Frontend and backend code share contracts through workspace packages.
-- Internal dependencies use `workspace:*` instead of duplicated package versions.
+- Frontend and backend code share contracts through the published `@jainparichay/types` package.
+- Internal (in-repo) dependencies use `workspace:*`; external shared packages use their published semver range.
 - Turborepo runs build, lint, typecheck, and test tasks across the graph.
 
 ## Stack
@@ -59,6 +56,35 @@ The sample app is intentionally real enough to prove the architecture:
 ## Getting Started
 
 Use Node `>=22.13.0` and the pinned package manager, `pnpm@11.17.0`.
+
+### 1. Authenticate to GitHub Packages
+
+Shared `@jainparichay/*` packages are fetched from GitHub Packages
+(`npm.pkg.github.com`). The repo's committed `.npmrc` carries only the
+registry mapping (`@jainparichay:registry=...`) — it never carries a token,
+because pnpm ignores tokens in a committed `.npmrc` by design (secret-leak
+risk) and the install fails with `ERR_PNPM_FETCH_401` if you put one there.
+Supply the token locally instead:
+
+```bash
+pnpm config set //npm.pkg.github.com/:_authToken <a GitHub token with read:packages>
+```
+
+(In CI this comes from `actions/setup-node` with `registry-url` set; in Docker
+builds it comes from a BuildKit secret — see
+[docs/guides/deployment.md](docs/guides/deployment.md).)
+
+### 2. Bring up Postgres and configure the environment
+
+The API hard-fails at startup if `DATABASE_URL` is not set, so set up the
+database and environment file before running `pnpm dev`:
+
+```bash
+cp .env.example .env
+docker compose up -d postgres
+```
+
+### 3. Install and run
 
 ```bash
 pnpm install
@@ -117,7 +143,18 @@ pnpm test
 pnpm verify:fast
 pnpm verify
 pnpm hooks:install
+pnpm db:generate
+pnpm db:migrate
+pnpm db:deploy
+pnpm db:studio
 ```
+
+The `db:*` scripts run `scripts/prisma.mjs`, which resolves the Prisma CLI and
+schema from the installed `@jainparichay/db` package (its `prisma.config.ts`
+points at its own bundled `schema.prisma` and `migrations/`) rather than a
+local `prisma/` folder in this repo. `db:generate` runs automatically on
+`pnpm install` via `apps/api`'s `postinstall`; `db:migrate`, `db:deploy`, and
+`db:studio` need `DATABASE_URL` set (see `.env.example`).
 
 Useful workspace-focused commands:
 
@@ -126,9 +163,11 @@ pnpm --filter @workspace-starter/web dev
 pnpm --filter @workspace-starter/secondary-web dev
 pnpm --filter @workspace-starter/web-host start
 pnpm --filter @workspace-starter/api dev
-pnpm --filter @workspace-starter/ui build
-pnpm --filter @workspace-starter/i18n test
 ```
+
+`@jainparichay/*` packages are no longer local workspaces, so they cannot be
+targeted with `pnpm --filter`; building, testing, and linting them happens in
+the [packages repo](https://github.com/JainParichay/packages).
 
 Useful Docker commands:
 
@@ -152,7 +191,9 @@ pnpm hooks:install
 
 ## Customizing The Template
 
-This starter uses the scope `@workspace-starter/*`. Replace it with your own project or organization scope in package manifests, imports, TypeScript path aliases, and docs examples.
+This starter uses the scope `@workspace-starter/*` for the local apps (`web`, `api`, `web-host`, `secondary-web`). Replace it with your own project or organization scope in package manifests, imports, TypeScript path aliases, and docs examples.
+
+Shared packages (`@jainparichay/*`) are external and versioned independently — renaming this repo's scope does not touch them. If you need to wrap or extend a `@jainparichay/*` package with project-specific behavior, add your own `packages/<name>` workspace under your own scope that depends on the published package, rather than forking it into this repo.
 
 The included homepage is a showcase page. Once the repo structure is in place, replace it with your product UI and keep the workspace boundaries.
 

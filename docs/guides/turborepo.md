@@ -34,10 +34,9 @@ pnpm --filter @workspace-starter/web build
 pnpm --filter @workspace-starter/secondary-web build
 pnpm --filter @workspace-starter/web-host typecheck
 pnpm --filter @workspace-starter/api typecheck
-pnpm --filter @workspace-starter/i18n test
 ```
 
-Use filtering when you want to focus on one workspace during development without losing the shared monorepo setup.
+Use filtering when you want to focus on one workspace during development without losing the shared monorepo setup. `@jainparichay/*` packages are published dependencies, not local workspaces, so they are not filter targets here — see [pnpm-workspace.md](./pnpm-workspace.md).
 
 ## When To Add A Turbo Task
 

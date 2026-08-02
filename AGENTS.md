@@ -18,7 +18,7 @@ Repo-local skills live in `.agents/skills`. When user prompts, repeated communic
 
 ## Project Structure & Module Organization
 
-PNPM/Turborepo monorepo. Apps: `apps/web` is the Astro frontend and `apps/api` is the NestJS + tRPC API. Packages: `packages/ui` contains React components, `packages/types` contains shared contracts, and `packages/config-typescript` contains reusable `tsconfig` presets. Root tests are in `tests/`, setup scripts in `scripts/`, and guides in `docs/guides/`.
+PNPM/Turborepo monorepo. Apps: `apps/web` is the Astro frontend, `apps/secondary-web` a second Astro app, `apps/web-host` the combined runtime host, and `apps/api` the NestJS + tRPC API. Shared code — UI components, shared contracts, i18n helpers, storage and database access, and reusable `tsconfig` presets — lives in `@jainparichay/*`, published from a separate repo (`github.com/JainParichay/packages`). Changes to shared packages belong in that repo, not here; this repo consumes them as versioned dependencies. An app may still add its own `packages/<name>` workspace under its own scope to wrap or extend a `@jainparichay/*` package. Root tests are in `tests/`, setup scripts in `scripts/`, and guides in `docs/guides/`.
 
 ## Build, Test, and Development Commands
 

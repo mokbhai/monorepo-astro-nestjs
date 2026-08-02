@@ -27,10 +27,12 @@ node .agents/skills/template-scope-renamer/scripts/audit-scope-references.mjs OL
 Read only the files needed for the specific hits, but include these surfaces in the map:
 
 - root `package.json`, `pnpm-workspace.yaml`, and `pnpm-lock.yaml`
-- `apps/*/package.json` and `packages/*/package.json`
-- workspace `tsconfig.json` files and `packages/config-typescript/*`
+- `apps/*/package.json` (and any app-added `packages/*/package.json` under the old scope)
+- workspace `tsconfig.json` files
 - source imports, type-only exports, tRPC type imports, and React consumers
 - root tests in `tests/`, setup/bootstrap scripts, docs, and `.agents/skills/*`
+
+Note: `@jainparichay/*` shared packages (including `@jainparichay/config-typescript`) are published externally from [github.com/JainParichay/packages](https://github.com/JainParichay/packages) and keep their own scope regardless of this repo's internal scope. Do not rename `@jainparichay/*` references as part of an internal scope rename unless the task is specifically about migrating off that external scope too.
 
 ## Edit Sequence
 

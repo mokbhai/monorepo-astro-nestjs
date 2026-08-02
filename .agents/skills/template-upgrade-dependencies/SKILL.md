@@ -14,7 +14,7 @@ Before editing, inspect the current dependency graph and upgrade intent:
 - `package.json` for root scripts, `packageManager`, engines, Changesets scripts, and root dev dependencies.
 - `pnpm-workspace.yaml` for `catalog`, named `catalogs`, `minimumReleaseAge`, and `allowBuilds`.
 - `pnpm-lock.yaml` for resolved versions and peer dependency shape.
-- `apps/*/package.json` and `packages/*/package.json` for workspace-local dependency placement, scripts, peer ranges, and `workspace:*` links.
+- `apps/*/package.json` (and any app-added `packages/*/package.json`) for workspace-local dependency placement, scripts, peer ranges, `workspace:*` links, and `@jainparichay/*` version pins.
 - `turbo.json` for which validation tasks are available and how task dependencies broaden the blast radius.
 - `.changeset/config.json` and existing `.changeset/*.md` when the dependency change affects publishable package behavior.
 
@@ -45,9 +45,9 @@ Do not trust memory for latest versions. Use package-manager metadata such as `p
 - Astro upgrades can affect `astro.config.*`, `@astrojs/check`, Vite behavior, React islands, and `.astro` build output expectations.
 - NestJS upgrades can affect Fastify integration, decorators, reflect metadata, CLI output, and TypeScript compiler requirements.
 - tRPC upgrades can affect router types, React Query integration, and client/server package alignment.
-- React 19 upgrades can affect peer ranges in `packages/ui`, `@types/react`, hydration behavior, and testing-library compatibility.
+- React 19 upgrades can affect `@jainparichay/ui`'s peer ranges (published from a separate repo — a peer-range change there needs a version bump here), `@types/react`, hydration behavior, and testing-library compatibility.
 - Tailwind 4 upgrades can affect Vite plugin usage, CSS entrypoints, class scanning, and `tailwind-merge` behavior.
-- TypeScript 6 upgrades can affect config presets in `packages/config-typescript`, declaration emit, ESLint parser support, and Astro/Nest typechecks.
+- TypeScript 6 upgrades can affect the config presets shipped by `@jainparichay/config-typescript` (published from a separate repo), declaration emit, ESLint parser support, and Astro/Nest typechecks.
 - TypeScript is deliberately held at `^6.0.3`. TypeScript 7 is the native (Go) compiler: it ships platform binaries and only `./unstable/*` exports, with no JS compiler API. `@typescript-eslint/*` (peer `>=4.8.4 <6.1.0`) and `@astrojs/check` (peer `^5.0.0 || ^6.0.0`) both still need that API. Re-check those two peer ranges before proposing TS 7 again; the catalog comment explains the pin.
 - Changesets upgrades can affect release scripts and generated changeset files.
 

@@ -55,6 +55,45 @@ select the same frontend used for the build. A frontend's Astro `base` must
 match its mount path; `build-frontends.mjs` sets `ASTRO_BASE` per app so they
 stay in sync.
 
+## Registry authentication for container builds
+
+`@jainparichay/*` packages are fetched from GitHub Packages during the image
+build, which requires a token even though the packages are public. Both
+`apps/api/Dockerfile` and `apps/web-host/Dockerfile`:
+
+- expect a `node_auth_token` BuildKit secret (`--secret id=node_auth_token`,
+  or the `secrets:` block already wired in `docker-compose.yml` reading the
+  `NODE_AUTH_TOKEN` environment variable),
+- write it to `/root/.npmrc` only for the duration of the `pnpm fetch` /
+  `pnpm deploy` layers that need it, then remove it in the same layer so the
+  token never persists in an image layer, and
+- fail fast with an explicit error if the secret is empty, rather than a
+  45-second-later unattributed 401.
+
+Build with `docker build --secret id=node_auth_token,env=NODE_AUTH_TOKEN ...`
+or `NODE_AUTH_TOKEN=<token> docker compose build`. The committed `.npmrc`
+supplies only the `@jainparichay:registry` mapping; it never carries the
+token itself.
+
+## Regenerating the Prisma Client after `pnpm deploy`
+
+`pnpm deploy --legacy` re-links `@jainparichay/db` from the content-addressable
+store into the deployed tree, which discards whatever Prisma Client was
+generated during the earlier build step (the generator has no custom
+`output`, so there is nothing else to preserve). Both Dockerfiles therefore
+run an explicit regenerate step against the deployed package directly:
+
+```bash
+cd -P /app/node_modules/@jainparichay/db \
+ && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
+```
+
+`@jainparichay/db`'s `prisma.config.ts` throws if `DATABASE_URL` is unset —
+even for `generate`, which never connects to a database — so a placeholder
+value is supplied. If you change the deploy step or add a new deployable app
+that depends on `@jainparichay/db`, keep this regenerate step (or an
+equivalent) after its `pnpm deploy`.
+
 ## Manual container release
 
 `.github/workflows/build-and-publish.yml` never runs after CI or a push. An

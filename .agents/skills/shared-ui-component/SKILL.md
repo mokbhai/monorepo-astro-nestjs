@@ -1,6 +1,6 @@
 ---
 name: shared-ui-component
-description: Use when adding or changing reusable React components in packages/ui for the JainParichay template-jp monorepo, especially when component location, CVA variants, cn class merging, src/index.ts exports, React peer dependencies, tsup build behavior, or apps/web usage needs to stay aligned.
+description: Use when adding or changing reusable React components consumed via @jainparichay/ui, or app-local components in apps/web, for the JainParichay template-jp monorepo, especially when component location, CVA variants, cn class merging, src/index.ts exports, React peer dependencies, tsup build behavior, or apps/web usage needs to stay aligned.
 ---
 
 # Shared UI Component
@@ -9,15 +9,17 @@ description: Use when adding or changing reusable React components in packages/u
 
 Use this skill to keep shared UI components small, reusable, and safe to consume from `apps/web`. Prefer the repo's current React library pattern over introducing a new component architecture.
 
-## First Decide If It Belongs In packages/ui
+**`@jainparichay/ui` is not a local workspace in this repo.** It is published from a separate repo, [github.com/JainParichay/packages](https://github.com/JainParichay/packages) (`packages/ui` there), and consumed here as an ordinary `@jainparichay/ui` dependency. The component-shape, exports, and dependency-boundary guidance below describes the pattern that package follows, for reference when you need to add or change a component there — but doing so means making the change in the packages repo and publishing a new version, not editing anything under `template-jp`. This skill's guidance for `apps/web` itself (Web Usage, app-local component decisions) applies directly in this repo.
 
-Put a component in `packages/ui` only when it is a reusable primitive or cross-app building block. Keep it local to `apps/web` when it is tied to one page, one data shape, one route, tRPC calls, Astro content, or business copy.
+## First Decide If It Belongs In @jainparichay/ui
 
-If a request asks to put a domain-specific component into `packages/ui`, push back and recommend a local web component unless the component can be named and used without JainParichay-specific data or copy.
+A component belongs in `@jainparichay/ui` only when it is a reusable primitive or cross-app building block needed outside this one product. Keep it local to `apps/web` when it is tied to one page, one data shape, one route, tRPC calls, Astro content, or business copy.
+
+If a request asks to put a domain-specific component into `@jainparichay/ui`, push back and recommend a local web component unless the component can be named and used without JainParichay-specific data or copy. If the component genuinely is reusable, the change belongs in the packages repo.
 
 ## Component Shape
 
-Use the existing package layout:
+The `@jainparichay/ui` package uses this layout (in the packages repo):
 
 ```text
 packages/ui/src/components/ComponentName/ComponentName.tsx
@@ -62,7 +64,7 @@ For button-like controls, mirror `packages/ui/src/components/Button/Button.tsx`:
 
 ## Exports
 
-Every public component must be exported from `packages/ui/src/index.ts`:
+Every public component must be exported from `@jainparichay/ui`'s `src/index.ts` (in the packages repo):
 
 ```ts
 export { Badge } from './components/Badge/Badge';
@@ -88,7 +90,7 @@ Prefer existing `catalog:` entries from `pnpm-workspace.yaml` for shared version
 Use package imports from web code:
 
 ```tsx
-import { Badge, Button } from '@workspace-starter/ui';
+import { Badge, Button } from '@jainparichay/ui';
 
 export function ExampleActions() {
   return (
@@ -104,15 +106,15 @@ For Astro pages, import from the package root too:
 
 ```astro
 ---
-import { Button } from '@workspace-starter/ui';
+import { Button } from '@jainparichay/ui';
 ---
 
 <Button variant="default" size="lg">Create profile</Button>
 ```
 
-Only add a `client:*` directive when the shared component or its children need browser interactivity. Do not import from `../../packages/ui/src/...` in `apps/web`.
+Only add a `client:*` directive when the shared component or its children need browser interactivity. `@jainparichay/ui` is an ordinary published dependency of `apps/web` — there is no local `packages/ui` to import from directly.
 
-`apps/web/tsconfig.json` already maps `@workspace-starter/ui` to `../../packages/ui/src/index.ts`, and `apps/web/astro.config.mjs` already includes `@workspace-starter/ui` in `optimizeDeps`. Do not edit those files for a normal new component.
+`apps/web/astro.config.ts` already includes `@jainparichay/ui` in Vite's `optimizeDeps` (it ships a pre-built `dist/`). `apps/web/tsconfig.json` has no path alias for it — it resolves through normal `node_modules` package resolution like any other dependency. Do not edit either file for a normal new component; a new export inside the package needs a version bump in the packages repo before it is usable here at all.
 
 ## Quality Bar
 
@@ -125,15 +127,9 @@ Only add a `client:*` directive when the shared component or its children need b
 
 ## Verification
 
-Run the narrowest checks that prove the changed surface:
+`@jainparichay/ui` is not a local workspace, so `pnpm --filter` cannot target it. Verify a change there with the packages repo's own commands (`pnpm --filter @jainparichay/ui lint`, `typecheck`, `build`) before publishing a new version.
 
-```bash
-pnpm --filter @workspace-starter/ui lint
-pnpm --filter @workspace-starter/ui typecheck
-pnpm --filter @workspace-starter/ui build
-```
-
-If `apps/web` consumes the component, also run:
+For a change made in this repo (bumping the `@jainparichay/ui` version, or an app-local component in `apps/web`), run the narrowest checks that prove the changed surface:
 
 ```bash
 pnpm --filter @workspace-starter/web typecheck

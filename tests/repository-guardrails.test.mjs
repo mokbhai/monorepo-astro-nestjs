@@ -169,7 +169,7 @@ test('combined web-host image deploys API, frontend, and migration runtime depen
   assert.notEqual(migrateIndex, -1);
   assert.notEqual(hostIndex, -1);
   assert.ok(migrateIndex < hostIndex);
-  assert.match(entrypoint, /node_modules\/@workspace-starter\/db/);
+  assert.match(entrypoint, /node_modules\/@jainparichay\/db/);
 });
 
 test('api production startup applies migrations before starting the server', async () => {
@@ -184,7 +184,7 @@ test('api production startup applies migrations before starting the server', asy
   const migrateIndex = entrypoint.indexOf('prisma migrate deploy');
   const apiIndex = entrypoint.indexOf('exec node /app/dist/main');
   assert.match(entrypoint, /^#!\/bin\/sh\nset -eu\n/);
-  assert.match(entrypoint, /cd -P \/app\/node_modules\/@workspace-starter\/db/);
+  assert.match(entrypoint, /cd -P \/app\/node_modules\/@jainparichay\/db/);
   assert.notEqual(migrateIndex, -1);
   assert.notEqual(apiIndex, -1);
   assert.ok(migrateIndex < apiIndex, 'migrations must run before API startup');
@@ -195,6 +195,20 @@ test('api production startup applies migrations before starting the server', asy
   );
 });
 
+// This test intentionally excludes `node_modules` from the isolated copy so
+// the copy step stays fast and deterministic (the real workspace
+// `node_modules` is large and irrelevant to what `pnpm deploy` produces from
+// the lockfile/store). One consequence: `apps/api/node_modules` does not
+// exist yet when `pnpm deploy`'s source-workspace pass runs the `postinstall`
+// hook, so `scripts/prisma.mjs generate` legitimately no-ops there (see its
+// own "pnpm deploy source pass" comment) rather than actually generating a
+// Prisma Client. This test therefore verifies deploy-path *structure* —
+// `@jainparichay/db`'s static Prisma artifacts (config, schema, migrations)
+// land in the deployed tree and its bundled `prisma` CLI is runnable from
+// there — but it does NOT exercise or guard `prisma generate` /
+// `@prisma/client` generation. That path is covered by the Dockerfiles
+// (`apps/api/Dockerfile`, `apps/web-host/Dockerfile`), which regenerate the
+// client after `pnpm deploy` against a fully installed tree.
 test('api production deploy includes a runnable Prisma migration artifact', async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'api-production-deploy-'));
   const isolatedRepoDir = path.join(tempDir, 'repo');
@@ -226,12 +240,7 @@ test('api production deploy includes a runnable Prisma migration artifact', asyn
       { cwd: isolatedRepoDir },
     );
 
-    const dbDir = path.join(
-      deployDir,
-      'node_modules',
-      '@workspace-starter',
-      'db',
-    );
+    const dbDir = path.join(deployDir, 'node_modules', '@jainparichay', 'db');
     await Promise.all([
       stat(path.join(dbDir, 'prisma.config.ts')),
       stat(path.join(dbDir, 'prisma', 'schema.prisma')),
@@ -246,6 +255,9 @@ test('api production deploy includes a runnable Prisma migration artifact', asyn
       ),
     ]);
 
+    // `@jainparichay/db`'s `prisma.config.ts` throws if `DATABASE_URL` is
+    // unset, even for `--version` (it loads config eagerly). `--version`
+    // never connects to a database, so a placeholder is sufficient.
     const { stdout } = await execFileAsync(
       '/bin/sh',
       [
@@ -254,7 +266,10 @@ test('api production deploy includes a runnable Prisma migration artifact', asyn
         'sh',
         dbDir,
       ],
-      { cwd: isolatedRepoDir },
+      {
+        cwd: isolatedRepoDir,
+        env: { ...process.env, DATABASE_URL: 'postgresql://placeholder' },
+      },
     );
     assert.match(stdout, /prisma\s+: 7\./);
   } finally {
@@ -263,10 +278,12 @@ test('api production deploy includes a runnable Prisma migration artifact', asyn
 });
 
 test('workspace package manifests keep shared graph invariants', async () => {
-  const packageFiles = [
-    ...(await listPackageJsonFiles('apps')),
-    ...(await listPackageJsonFiles('packages')),
-  ];
+  // Shared libraries used to live in `packages/*` as workspace members; they
+  // are now published externally as `@jainparichay/*` (see
+  // docs/guides/pnpm-workspace.md), so only `apps/*` remains a workspace
+  // source of package manifests. An app may still add its own `packages/*`
+  // under its own scope, in which case it should be added back here.
+  const packageFiles = await listPackageJsonFiles('apps');
   const manifests = await Promise.all(
     packageFiles.map(async (file) => [file, await readJson(file)]),
   );
@@ -306,6 +323,70 @@ test('workspace package manifests keep shared graph invariants', async () => {
           );
         }
       }
+    }
+  }
+});
+
+async function isAstroApp(appName) {
+  // Detect Astro apps structurally (presence of an astro config file) rather
+  // than by name, so this keeps working if apps are added, renamed, or
+  // removed.
+  const candidateConfigFiles = [
+    'astro.config.ts',
+    'astro.config.mjs',
+    'astro.config.js',
+    'astro.config.cjs',
+  ];
+
+  for (const fileName of candidateConfigFiles) {
+    const exists = await stat(new URL(`apps/${appName}/${fileName}`, rootDir))
+      .then(() => true)
+      .catch(() => false);
+    if (exists) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// `apps/web-host` serves the Astro apps' built output directly out of its own
+// deployed `node_modules` (see docker-entrypoint.sh / Dockerfile), so it must
+// carry every `@jainparichay/*` runtime dependency those apps need as a
+// top-level dependency of its own. Nothing enforces that mirror structurally,
+// so this test derives both sides from the manifests instead of hardcoding
+// today's package list — commit 81417a8 and the Task 11 web-host 500 both
+// shipped with `pnpm build`/`typecheck`/`test`/CI green and only failed at
+// container runtime because this mirror silently drifted.
+test('web-host mirrors every @jainparichay/* runtime dependency of the Astro apps it serves', async () => {
+  const appNames = (
+    await readdir(new URL('apps/', rootDir), { withFileTypes: true })
+  )
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  const webHostManifest = await readJson('apps/web-host/package.json');
+  const webHostDependencies = webHostManifest.dependencies ?? {};
+
+  for (const appName of appNames) {
+    if (!(await isAstroApp(appName))) {
+      continue;
+    }
+
+    const manifest = await readJson(`apps/${appName}/package.json`);
+    const dependencies = manifest.dependencies ?? {};
+
+    for (const [dependencyName, version] of Object.entries(dependencies)) {
+      if (!dependencyName.startsWith('@jainparichay/')) {
+        continue;
+      }
+
+      assert.equal(
+        webHostDependencies[dependencyName],
+        version,
+        `apps/web-host must declare ${dependencyName}@${version} in dependencies ` +
+          `(apps/${appName} depends on it and web-host serves its built output at runtime)`,
+      );
     }
   }
 });
