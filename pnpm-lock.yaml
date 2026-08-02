@@ -147,6 +147,9 @@ importers:
       fastify:
         specifier: ^5.10.0
         version: 5.10.0
+      prisma:
+        specifier: 'catalog:'
+        version: 7.9.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -175,9 +178,6 @@ importers:
       eslint:
         specifier: catalog:dev-tools
         version: 10.8.0(jiti@2.7.0)(supports-color@8.1.1)
-      prisma:
-        specifier: 'catalog:'
-        version: 7.9.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

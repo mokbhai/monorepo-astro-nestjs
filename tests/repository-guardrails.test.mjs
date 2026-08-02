@@ -184,7 +184,11 @@ test('combined web-host image deploys API, frontend, and migration runtime depen
   assert.notEqual(migrateIndex, -1);
   assert.notEqual(hostIndex, -1);
   assert.ok(migrateIndex < hostIndex);
-  assert.match(entrypoint, /node_modules\/@jainparichay\/db/);
+  // web-host re-links its @workspace-starter/api workspace dependency as a
+  // plain dependency of the deploy root, so the api's own schema (and its
+  // node_modules/.bin) land under node_modules/@workspace-starter/api
+  // rather than at the deploy root itself.
+  assert.match(entrypoint, /node_modules\/@workspace-starter\/api/);
   // `pnpm deploy` discards the Prisma Client generated during the build (it
   // re-links node_modules from the store), so the image must regenerate it
   // against the deployed tree — commit 81417a8's second defect was exactly
@@ -204,7 +208,11 @@ test('api production startup applies migrations before starting the server', asy
   const migrateIndex = entrypoint.indexOf('prisma migrate deploy');
   const apiIndex = entrypoint.indexOf('exec node /app/dist/main');
   assert.match(entrypoint, /^#!\/bin\/sh\nset -eu\n/);
-  assert.match(entrypoint, /cd -P \/app\/node_modules\/@jainparichay\/db/);
+  // apps/api is its own deploy root (see Dockerfile), so its schema and
+  // node_modules/.bin already live at $PWD (WORKDIR /app) — no `cd` into a
+  // nested package is needed, unlike the web-host entrypoint above.
+  assert.match(entrypoint, /PATH="\$PWD\/node_modules\/\.bin:\$PATH"/);
+  assert.doesNotMatch(entrypoint, /cd -P/);
   assert.notEqual(migrateIndex, -1);
   assert.notEqual(apiIndex, -1);
   assert.ok(migrateIndex < apiIndex, 'migrations must run before API startup');

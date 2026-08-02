@@ -31,6 +31,7 @@
     "@trpc/server": "catalog:",
     "fastify": "^5.10.0",
     "@jainparichay/db": "^0.2.1",
+    "prisma": "catalog:",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "catalog:"
@@ -42,7 +43,6 @@
     "@jainparichay/config-typescript": "^0.1.0",
     "dotenv": "catalog:",
     "eslint": "catalog:dev-tools",
-    "prisma": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

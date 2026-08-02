@@ -12,15 +12,13 @@ RUN npm install --global corepack@0.34.7 && corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 COPY apps/api/package.json apps/api/package.json
 
-# apps/api's postinstall runs `node ../../scripts/prisma.mjs generate`, so the
-# helper must exist on disk before `pnpm install` below (which triggers that
-# hook) — the rest of the source tree isn't copied until after the install
-# layer, to keep dependency resolution cached independent of source changes.
-# scripts/prisma.mjs must stay free of local imports (only node: builtins):
-# it is the only file from scripts/ copied into this layer, so anything it
-# imports from a sibling module would fail to resolve here with no test
-# covering the break.
-COPY scripts/prisma.mjs scripts/prisma.mjs
+# apps/api's postinstall runs `prisma generate` directly against its own
+# schema, so the schema must exist on disk before `pnpm install` below
+# (which triggers that hook) — the rest of the source tree isn't copied
+# until after the install layer, to keep dependency resolution cached
+# independent of source changes.
+COPY apps/api/prisma apps/api/prisma
+COPY apps/api/prisma.config.ts apps/api/prisma.config.ts
 
 # `@jainparichay/*` is fetched from GitHub Packages, which requires auth. The
 # committed .npmrc supplies only the registry mapping (see Task 8); the
@@ -57,14 +55,12 @@ RUN --mount=type=secret,id=node_auth_token \
 
 # `pnpm deploy` rebuilds /app/node_modules from the content-addressable store,
 # which discards the Prisma Client generated during the build. The generator
-# has no custom output, so regenerate it inside the deployed tree. This is an
-# inline command rather than a call to scripts/prisma.mjs: `pnpm deploy`
-# never copies scripts/ into /app at all, and even if it were present there,
-# `--prod` means the `prisma` devDependency the script shells out to isn't
-# installed in the deployed tree. `@jainparichay/db`'s prisma.config.ts
-# throws if DATABASE_URL is unset (it's loaded even for `generate`), so
-# supply a placeholder — this never connects to a database.
-RUN cd -P /app/node_modules/@jainparichay/db \
+# has no custom output, so regenerate it inside the deployed tree, against
+# the app's own schema (deployed to /app since apps/api is the deploy root
+# here). `apps/api`'s prisma.config.ts throws if DATABASE_URL is unset (it's
+# loaded even for `generate`), so supply a placeholder — this never connects
+# to a database.
+RUN cd -P /app \
  && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
 
 FROM node:22-slim AS runtime

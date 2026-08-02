@@ -62,14 +62,13 @@ RUN --mount=type=secret,id=node_auth_token \
 
 # `pnpm deploy` rebuilds /app/node_modules from the content-addressable store,
 # which discards the Prisma Client generated during the build. The generator
-# has no custom output, so regenerate it inside the deployed tree. This is an
-# inline command rather than a call to scripts/prisma.mjs: `pnpm deploy`
-# never copies scripts/ into /app at all, and even if it were present there,
-# `--prod` means the `prisma` devDependency the script shells out to isn't
-# installed in the deployed tree. `@jainparichay/db`'s prisma.config.ts
-# throws if DATABASE_URL is unset (it's loaded even for `generate`), so
-# supply a placeholder — this never connects to a database.
-RUN cd -P /app/node_modules/@jainparichay/db \
+# has no custom output, so regenerate it inside the deployed tree, against
+# the api's own schema (deployed under node_modules/@workspace-starter/api,
+# since web-host re-links its workspace dependency there rather than at the
+# deploy root — see #20). `apps/api`'s prisma.config.ts throws if
+# DATABASE_URL is unset (it's loaded even for `generate`), so supply a
+# placeholder — this never connects to a database.
+RUN cd -P /app/node_modules/@workspace-starter/api \
  && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
 
 FROM node:22-slim AS runtime
