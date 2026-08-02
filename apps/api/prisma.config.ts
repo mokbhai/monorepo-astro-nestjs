@@ -11,11 +11,18 @@ import { defineConfig } from 'prisma/config';
 // both exist.
 config({ path: ['.env', '../../.env'] });
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL is not set');
-}
+// `prisma generate` never connects to a database — it only reads the schema
+// — so it does not need a real `DATABASE_URL`. Falling back to a placeholder
+// here (rather than throwing when it's unset, as this file used to) lets
+// `postinstall`/`db:generate` be plain, portable `prisma generate` calls
+// instead of the POSIX-only `DATABASE_URL="${DATABASE_URL:-...}" prisma
+// generate` shell form, which fails outright on Windows (pnpm does not
+// enable its shell emulator by default, so that syntax runs under `cmd.exe`
+// there). Commands that genuinely connect (`migrate dev`, `migrate deploy`,
+// `studio`) still need a real `DATABASE_URL` — they fail loudly on their own
+// against this placeholder host, which is the same failure shape as before,
+// just surfaced by Prisma's own connection error instead of this file.
+const databaseUrl = process.env.DATABASE_URL ?? 'postgresql://placeholder';
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',

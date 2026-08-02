@@ -57,11 +57,11 @@ RUN --mount=type=secret,id=node_auth_token \
 # which discards the Prisma Client generated during the build. The generator
 # has no custom output, so regenerate it inside the deployed tree, against
 # the app's own schema (deployed to /app since apps/api is the deploy root
-# here). `apps/api`'s prisma.config.ts throws if DATABASE_URL is unset (it's
-# loaded even for `generate`), so supply a placeholder — this never connects
-# to a database.
+# here). No DATABASE_URL is needed: `generate` never connects to a database,
+# and `apps/api`'s prisma.config.ts falls back to a placeholder connection
+# string on its own when the variable is unset.
 RUN cd -P /app \
- && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
+ && PATH="$PWD/node_modules/.bin:$PATH" prisma generate
 
 FROM node:22-slim AS runtime
 

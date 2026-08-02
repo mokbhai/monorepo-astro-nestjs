@@ -302,7 +302,7 @@ path: 'prisma/migrations' }, datasource: { url: databaseUrl } })`; adjust
    ```json
    {
      "scripts": {
-       "postinstall": "DATABASE_URL=\"${DATABASE_URL:-postgresql://placeholder}\" prisma generate"
+       "postinstall": "prisma generate"
      },
      "dependencies": {
        "prisma": "catalog:"
@@ -310,10 +310,25 @@ path: 'prisma/migrations' }, datasource: { url: databaseUrl } })`; adjust
    }
    ```
 
-   The placeholder is still needed: `prisma.config.ts` throws if
-   `DATABASE_URL` is unset even for `generate`, which never touches a
-   database, and a fresh clone or CI checkout won't have a real one yet.
-   `prisma` has to be a `dependency`, not a `devDependency`, even though it
+   Keep this a plain command, not a shell-conditional one:
+
+   ```bash
+   DATABASE_URL="${DATABASE_URL:-postgresql://placeholder}" prisma generate
+   ```
+
+   That form works in `sh`/`bash`, but pnpm does not enable its shell
+   emulator by default, so a Windows `pnpm install` runs it under `cmd.exe`,
+   where the syntax is invalid and the install fails outright — this repo
+   shipped exactly that regression once already. `generate` never touches a
+   database, and a fresh clone or CI checkout won't have a real
+   `DATABASE_URL` yet, so push the fallback into `prisma.config.ts` instead
+   (see point 4 above): default `datasource.url` to
+   `'postgresql://placeholder'` rather than throwing when the env var is
+   unset. Commands that actually connect (`migrate dev`, `migrate deploy`,
+   `studio`) still need a real `DATABASE_URL` — they now fail loudly on
+   their own, from Prisma's own connection error against the placeholder
+   host, instead of from this file. `prisma` has to be a `dependency`, not a
+   `devDependency`, even though it
    is only ever invoked at install/build/migrate time. This is subtle
    because `pnpm deploy --prod` itself does **not** fail if you get it
    wrong — it strips `devDependencies` from the deployed tree but still
@@ -347,7 +362,7 @@ and in the app itself, the way
 ```json
 {
   "scripts": {
-    "db:generate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://placeholder}\" prisma generate",
+    "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio"
@@ -466,7 +481,7 @@ Update every Dockerfile that installs dependencies for this app:
 
    ```dockerfile
    RUN cd -P /app \
-    && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
+    && PATH="$PWD/node_modules/.bin:$PATH" prisma generate
    ```
 
    If a host app deploys your app as an embedded `workspace:*` dependency
@@ -475,8 +490,12 @@ Update every Dockerfile that installs dependencies for this app:
 
    ```dockerfile
    RUN cd -P /app/node_modules/@workspace-starter/api \
-    && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
+    && PATH="$PWD/node_modules/.bin:$PATH" prisma generate
    ```
+
+   Neither needs a `DATABASE_URL`: `generate` never connects to a database,
+   and `prisma.config.ts` falls back to a placeholder connection string on
+   its own (see Step 5, point 5) rather than throwing when it's unset.
 
 4. **If a host app deploys an embedded `workspace:*` dependency that has its
    own Prisma `postinstall`, add `--ignore-scripts` to that `pnpm deploy`

@@ -89,7 +89,7 @@ in the deployed tree — its own deploy root for `apps/api/Dockerfile`:
 
 ```bash
 cd -P /app \
- && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
+ && PATH="$PWD/node_modules/.bin:$PATH" prisma generate
 ```
 
 and the re-linked embedded dependency path for `apps/web-host/Dockerfile`,
@@ -98,14 +98,17 @@ than as its own deploy root (see `apps/web-host/docker-entrypoint.sh`):
 
 ```bash
 cd -P /app/node_modules/@workspace-starter/api \
- && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
+ && PATH="$PWD/node_modules/.bin:$PATH" prisma generate
 ```
 
-`apps/api`'s `prisma.config.ts` throws if `DATABASE_URL` is unset — even for
-`generate`, which never connects to a database — so a placeholder value is
-supplied. If you change the deploy step or add a new deployable app with its
-own Prisma schema, keep an equivalent regenerate step after its
-`pnpm deploy`.
+No `DATABASE_URL` is supplied here: `generate` never connects to a
+database, and `apps/api`'s `prisma.config.ts` falls back to a placeholder
+connection string on its own when the variable is unset, rather than
+throwing (it used to throw — this was changed specifically so `prisma
+generate` never needs a shell-conditional `DATABASE_URL=...` wrapper, which
+is POSIX-only and breaks `pnpm install` on Windows). If you change the
+deploy step or add a new deployable app with its own Prisma schema, keep an
+equivalent regenerate step after its `pnpm deploy`.
 
 ## Manual container release
 

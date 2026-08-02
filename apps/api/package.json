@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" \"vitest.config.ts\" \"prisma.config.ts\"",
     "test": "vitest run",
-    "postinstall": "DATABASE_URL=\"${DATABASE_URL:-postgresql://placeholder}\" prisma generate",
-    "db:generate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://placeholder}\" prisma generate",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio"
