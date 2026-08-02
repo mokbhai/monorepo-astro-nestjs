@@ -219,7 +219,7 @@ If you want to start with your own frontend instead of the bundled web examples,
 - [PNPM workspace guide](./docs/guides/pnpm-workspace.md)
 - [Turborepo guide](./docs/guides/turborepo.md)
 - [Template customization guide](./docs/guides/customizing-the-template.md)
-- [Migrating an existing app to shared packages](./docs/guides/migrating-apps-to-shared-packages.md)
+- [Shared-packages migration guide](./docs/guides/migrating-apps-to-shared-packages.md)
 
 ## Suggested Workflow
 

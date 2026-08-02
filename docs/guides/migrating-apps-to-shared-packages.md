@@ -10,9 +10,7 @@ copied it. They have since been extracted into a separate public repo,
 [github.com/JainParichay/packages](https://github.com/JainParichay/packages),
 and published to GitHub Packages as `@jainparichay/<name>@0.1.0`. This
 template (`template-jp`) has already been migrated to consume them — it is
-the worked example this guide is drawn from. Every path, script, and snippet
-below is copied from this repo's actual state, not from memory of the
-migration.
+the worked example this guide is drawn from.
 
 Follow the steps in order. Each one calls out the specific mistake that cost
 real debugging time during this migration, so skipping ahead is likely to
@@ -69,12 +67,24 @@ are exactly three trusted routes, matching the three places installs happen:
      NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
    steps:
+     - uses: actions/checkout@v7
      - uses: actions/setup-node@v7
        with:
          node-version: 22.13.0
          registry-url: https://npm.pkg.github.com
+     # ...then activate whatever package manager your app pins (this repo
+     # installs and enables a pinned Corepack version, then `corepack
+     # prepare pnpm@<version> --activate` — see the full sequence in
+     # .github/workflows/ci.yml) before:
      - run: pnpm install --frozen-lockfile
    ```
+
+   This is trimmed to the registry-auth-relevant steps; it omits this repo's
+   Corepack setup steps (`npm install --global corepack@0.34.7`, `corepack
+enable`, `corepack prepare pnpm@11.17.0 --activate`), which your app needs
+   too if it pins pnpm the same way — see
+   [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) for the full,
+   working sequence rather than reconstructing it from this excerpt.
 
    `setup-node` writes a user-level npmrc that reads `NODE_AUTH_TOKEN` from
    the environment — this is a trusted source, unlike a project `.npmrc`
@@ -85,23 +95,43 @@ are exactly three trusted routes, matching the three places installs happen:
    ends so the token never persists in an image layer. See Step 6 below for
    the exact snippet this repo uses.
 
+Once the credential is in place, confirm it works before doing anything else
+in this guide:
+
+```bash
+pnpm view @jainparichay/types version
+```
+
+If this prints a version, the credential is good. If it 401s, fix that now —
+every later step assumes a working install, and diagnosing an auth failure
+after eight steps of surgery on your app is much harder than catching it
+here.
+
 ## Step 2: Exclude `@jainparichay/*` from any release-age quarantine
 
-If your `pnpm-workspace.yaml` sets `minimumReleaseAge` (a supply-chain
-buffer that refuses to resolve packages published too recently), add:
+pnpm 11 enables a minimum release-age floor **by default**, even if your
+`pnpm-workspace.yaml` never mentions `minimumReleaseAge` — it is not
+something you have to opt into. Add the exclusion unconditionally on pnpm
+11+:
 
 ```yaml
 minimumReleaseAgeExclude:
   - '@jainparichay/*'
 ```
 
-This repo's [`pnpm-workspace.yaml`](../../pnpm-workspace.yaml) sets
-`minimumReleaseAge: 10080` (7 days) as a third-party supply-chain buffer,
-with exactly this exclusion for `@jainparichay/*` — those are your own
-published output, not a third-party risk, and without the exclusion a
-version you just published stays unresolvable to your own apps until the
-window elapses. If your app has no `minimumReleaseAge` setting, skip this
-step.
+Without it, `pnpm install`/`pnpm fetch` rejects any `@jainparichay/*` version
+published inside that default floor — which includes every version you
+publish yourself, right when you'd want to consume it. This repo's
+[`pnpm-workspace.yaml`](../../pnpm-workspace.yaml) additionally sets an
+explicit `minimumReleaseAge: 10080` (7 days) as its own third-party
+supply-chain buffer, wider than pnpm's default; that explicit setting only
+widens the window further, it is not what turns the protection on. The
+exclusion is what makes `@jainparichay/*` exempt from whichever floor
+applies, default or explicit, and both this repo's
+[`pnpm-workspace.yaml`](../../pnpm-workspace.yaml) and its
+[`apps/web-host/Dockerfile`](../../apps/web-host/Dockerfile) (in the comment
+above its `pnpm fetch` layer) call out what happens without it: the
+quarantine rejects the lockfile.
 
 ## Step 3: Delete the app's local copies
 
@@ -177,14 +207,31 @@ folder, and three subtleties compound:
    your app's first `.env` is created).
 
 Don't hand-roll a fix for these. Copy
-[`scripts/prisma.mjs`](../../scripts/prisma.mjs) into your app verbatim (or
-via a shared internal tool if you maintain more than one Prisma-consuming
-app). It resolves `@jainparichay/db`'s on-disk directory by walking Node's
-own module-resolution search paths (survives hoisting changes), runs the
+[`scripts/prisma.mjs`](../../scripts/prisma.mjs) into your app (or via a
+shared internal tool if you maintain more than one Prisma-consuming app). It
+resolves `@jainparichay/db`'s on-disk directory by walking Node's own
+module-resolution search paths (survives hoisting changes), runs the
 `prisma` CLI with that directory as `cwd` (so `@prisma/client` resolves and
 `prisma.config.ts`'s `schema`/`migrations.path` fields are honored), and
 substitutes a placeholder `DATABASE_URL` only for `generate` while requiring
 a real one for every other subcommand.
+
+Do **not** copy it verbatim if your Prisma-consuming app isn't `apps/api` —
+the script hardcodes that path in two constants near the top
+(`scripts/prisma.mjs:24-25`):
+
+```js
+const apiPackageJson = path.join(repoRoot, 'apps', 'api', 'package.json');
+const apiNodeModules = path.join(repoRoot, 'apps', 'api', 'node_modules');
+```
+
+Change both to your app's actual directory. Getting this wrong is silent,
+not loud: if `apiNodeModules` doesn't exist, the script's error handling
+(`scripts/prisma.mjs:114-125`) treats that as pnpm's "source pass" case,
+prints a `warning: skipping prisma generate` line, and **exits 0** — so
+`pnpm install` still reports success. The failure only surfaces much later,
+as a runtime `PrismaClient did not initialize` error, which is far harder to
+trace back to a stale hardcoded path than an install-time failure would be.
 
 Wire it up the way this repo's root [`package.json`](../../package.json)
 does:
@@ -218,6 +265,23 @@ the Prisma schema consumption, the way
 (Adjust the relative path to `scripts/prisma.mjs` if your app lives at a
 different depth than `apps/<name>`.)
 
+Right next to that `prisma` devDependency, add `allowBuilds` entries for the
+native toolchain `@jainparichay/db` pulls in, or the very first install
+fails with `ERR_PNPM_IGNORED_BUILDS` (pnpm 11's build-script approval gate
+blocks unrecognized native builds by default). Add the packages actually
+used by your Prisma setup, the way this repo's
+[`pnpm-workspace.yaml`](../../pnpm-workspace.yaml) does:
+
+```yaml
+allowBuilds:
+  prisma: true
+  '@prisma/engines': true
+```
+
+(This repo's own `allowBuilds` list also includes `@nestjs/core`, `esbuild`,
+and `sharp` for reasons unrelated to Prisma — copy only what your build
+actually needs.)
+
 Two more things to update for a Prisma consumer:
 
 - Any `docker-entrypoint.sh` that `cd`s into a local `prisma/` folder before
@@ -244,14 +308,32 @@ Two more things to update for a Prisma consumer:
 
 ## Step 6: Containers
 
+The snippets below are illustrative; treat
+[`docs/guides/deployment.md`](./deployment.md) (see its "Registry
+authentication for container builds" and "Regenerating the Prisma Client
+after `pnpm deploy`" sections) as the canonical, kept-current version and
+copy from there rather than from two places that can drift apart.
+
 Update every Dockerfile that installs dependencies for this app:
 
-1. **Copy `.npmrc` into the install layer** so the registry mapping from
-   Step 1 is present:
+1. **Copy both `.npmrc` and `pnpm-workspace.yaml` into the install layer.**
+   `.npmrc` supplies the registry mapping from Step 1; `pnpm-workspace.yaml`
+   supplies the `minimumReleaseAgeExclude` from Step 2. Both are required at
+   fetch/install time, not just at repo checkout time — without
+   `pnpm-workspace.yaml` present in this layer, `pnpm fetch`/`pnpm install`
+   falls back to the release-age floor with no exclusion and rejects your
+   own just-published packages, exactly as
+   [`apps/web-host/Dockerfile`](../../apps/web-host/Dockerfile)'s comment
+   above its `pnpm fetch` step explains:
 
    ```dockerfile
-   COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
+   COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
    ```
+
+   (This repo's own `apps/api/Dockerfile` also copies `turbo.json` here
+   because this repo uses Turborepo; include it only if your app does too —
+   an app without Turborepo will fail the build on a missing file if it
+   blindly copies this line.)
 
 2. **Supply the auth token from a BuildKit secret, in the same `RUN` as the
    install**, and remove it before the layer ends. This repo's
@@ -291,7 +373,34 @@ Update every Dockerfile that installs dependencies for this app:
     && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
    ```
 
-4. **Expect a second, later auth prompt.** Once the full source tree lands
+4. **If a host app deploys an embedded `workspace:*` dependency that has its
+   own Prisma `postinstall`, add `--ignore-scripts` to that `pnpm deploy`
+   call.** This is Step 7's "host" case colliding with this step's
+   container subsystem: `pnpm deploy` re-links an embedded `workspace:*`
+   dependency (for example `apps/web-host`'s dependency on
+   `@workspace-starter/api`) as a plain dependency of the deployed target
+   rather than a workspace project. That subjects its `postinstall` to
+   pnpm's build-script approval gate, and it fails with
+   `ERR_PNPM_IGNORED_BUILDS` unless that dependency's name is listed in
+   `allowBuilds` — which it normally isn't, since it's your own workspace
+   package, not a third-party one you'd think to allow. This repo's
+   [`apps/web-host/Dockerfile`](../../apps/web-host/Dockerfile) sidesteps
+   this rather than adding an `allowBuilds` entry, because the
+   `postinstall` in question only runs `prisma generate`, which the next
+   `RUN` (the client-regenerate step above) redoes anyway:
+
+   ```dockerfile
+   RUN --mount=type=secret,id=node_auth_token \
+       ... \
+    && pnpm deploy --legacy --filter @workspace-starter/web-host --prod --ignore-scripts /app \
+    && rm -f /root/.npmrc
+   ```
+
+   Only do this when you've confirmed the skipped `postinstall` is redundant
+   with a regenerate step you already run (as in point 3 above) — otherwise
+   `--ignore-scripts` silently drops whatever else that `postinstall` does.
+
+5. **Expect a second, later auth prompt.** Once the full source tree lands
    in the image (after `COPY . .`), pnpm's automatic pre-run dependency
    check (`verify-deps-before-run`, on by default) notices workspace
    members that weren't part of the earlier lockfile-only layer and
@@ -391,6 +500,13 @@ Prisma client against the published schema. If this fails with
 `ERR_PNPM_FETCH_401`, re-check Step 1 — the most common cause is a token
 that only exists as `NODE_AUTH_TOKEN` in your shell without ever landing in
 a trusted npmrc.
+
+`pnpm install` also rewrites `pnpm-lock.yaml` to record the new
+`@jainparichay/*` resolutions. Commit that updated lockfile. CI runs `pnpm
+install --frozen-lockfile` (see Step 11), which fails outright if the
+lockfile on disk doesn't already match the manifests — an uncommitted
+lockfile change here will pass locally and then break the very first CI run
+after you push.
 
 ## Step 11: CI and deploy environments
 
