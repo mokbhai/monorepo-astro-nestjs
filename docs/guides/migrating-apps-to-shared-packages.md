@@ -426,29 +426,42 @@ out of its own deployed `node_modules` — for example, `apps/web-host` in
 this repo runs `@workspace-starter/api` in-process as a `workspace:*`
 dependency, and separately serves Astro apps' static/SSR output — then the
 host's own `package.json` `dependencies` must include every
-`@jainparichay/*` package that the apps it serves depend on, even if the
-host's own code never imports them directly. `pnpm deploy --prod` only
-installs what a package's own manifest declares; if the served app needs
-`@jainparichay/db` but the host doesn't declare it, the host's deployed
-image is missing it and fails at runtime with no earlier signal.
+`@jainparichay/*` package that the served apps' _built output actually
+resolves from the host's `node_modules` at runtime_ (Astro's SSR build
+externalizes rather than bundles these, so the compiled server does a bare
+`import` that Node resolves starting from wherever that file ends up), even
+if the host's own code never imports them directly. `pnpm deploy --prod`
+only installs what a package's own manifest declares; if the served app
+needs `@jainparichay/db` but the host doesn't declare it, the host's
+deployed image is missing it and fails at runtime with no earlier signal.
+This does **not** extend to an embedded app's _other_ dependencies (e.g. a
+NestJS API's own `@nestjs/*` packages) — those resolve from that app's own
+nested `node_modules`, the same way any workspace package resolves its own
+dependencies, and mirroring them into the host would just create a second,
+independently-drifting copy of the served app's manifest.
 
 Concretely: if `apps/web` depends on `@jainparichay/{i18n,storage,types,ui}`
 and `apps/web-host` serves its built output, `apps/web-host`'s
-`package.json` must list all four as direct dependencies too. Compare
-[`apps/web/package.json`](../../apps/web/package.json) and
-[`apps/web-host/package.json`](../../apps/web-host/package.json) in this
-repo — the overlap is intentional and required, not duplication to clean
-up.
+`package.json` must list all four as direct dependencies too. The same
+applies to `react`/`react-dom`, which Astro's SSR build externalizes the
+same way. Compare [`apps/web/package.json`](../../apps/web/package.json)
+and [`apps/web-host/package.json`](../../apps/web-host/package.json) in
+this repo — the overlap is intentional and required, not duplication to
+clean up.
 
 Copy the guardrail test that catches this automatically:
 [`tests/repository-guardrails.test.mjs`](../../tests/repository-guardrails.test.mjs),
-specifically the test named `'web-host mirrors every @jainparichay/*
-runtime dependency of the apps it serves'`. It derives the set of apps a
-host serves (either as an embedded `workspace:*` dependency, or as staged
-Astro output) and asserts the host's manifest carries every
-`@jainparichay/*` dependency those apps declare, at the matching version.
-Adapt the "which apps count as served" detection to your own host's
-mechanism if it differs from this repo's.
+specifically the test named `'web-host mirrors the @jainparichay/*, react,
+and react-dom dependencies resolved from its deploy root'`. It derives the
+set of apps a host serves (either as an embedded `workspace:*` dependency,
+or as staged Astro output) and asserts the host's manifest carries every
+`@jainparichay/*`/`react`/`react-dom` dependency those apps declare, at the
+matching version — deliberately not every dependency those apps have, only
+the ones actually resolved from the host's own `node_modules`. Adapt both
+the "which apps count as served" detection and the allowlist of guarded
+package names to your own host's mechanism if it differs from this repo's
+(for example, if your host also serves an app that externalizes a different
+third-party package at build time).
 
 ## Step 8: ESM-only packages
 
