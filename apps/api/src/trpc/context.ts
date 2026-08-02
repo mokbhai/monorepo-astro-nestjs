@@ -1,20 +1,8 @@
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
-import type { PrismaClient } from '@workspace-starter/db' with {
-  'resolution-mode': 'import',
-};
-
-let dbClient: PrismaClient | undefined;
-
-async function getDbClient(): Promise<PrismaClient> {
-  if (!dbClient) {
-    ({ prisma: dbClient } = await import('@workspace-starter/db'));
-  }
-
-  return dbClient;
-}
+import { prisma } from '../prisma/client';
 
 // Extend this with redis, user, etc. as the app grows
-export async function createContext({ req, res }: CreateFastifyContextOptions) {
+export function createContext({ req, res }: CreateFastifyContextOptions) {
   // TODO: extract user from JWT / session
   const user = getUserFromRequest(req);
 
@@ -22,7 +10,7 @@ export async function createContext({ req, res }: CreateFastifyContextOptions) {
     req,
     res,
     user,
-    db: await getDbClient(),
+    db: prisma,
   };
 }
 

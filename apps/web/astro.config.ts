@@ -41,14 +41,9 @@ export default defineConfig({
 
   vite: {
     plugins: [tailwindcss()],
-    // Strategy A: UI package ships pre-built dist/
-    // Tell Vite to pre-bundle it so it's optimized at dev startup
+    // Pre-bundle these so they're optimized at dev startup.
     optimizeDeps: {
-      include: [
-        '@workspace-starter/ui',
-        '@trpc/client',
-        '@tanstack/react-query',
-      ],
+      include: ['@trpc/client', '@tanstack/react-query'],
     },
   },
 });

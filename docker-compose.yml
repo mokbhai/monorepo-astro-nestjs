@@ -21,6 +21,8 @@ services:
       dockerfile: apps/web-host/Dockerfile
       args:
         PUBLIC_API_URL: ${PUBLIC_API_URL:-}
+      secrets:
+        - node_auth_token
     environment:
       NODE_ENV: production
       PORT: 4321
@@ -35,3 +37,7 @@ services:
 
 volumes:
   postgres_data:
+
+secrets:
+  node_auth_token:
+    environment: NODE_AUTH_TOKEN

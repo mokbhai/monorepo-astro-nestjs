@@ -14,7 +14,7 @@ Before editing, map the feature boundary and decide what must be public, protect
 - Public procedures are safe for anonymous callers and use `publicProcedure`.
 - Protected procedures require `ctx.user` and use `protectedProcedure`.
 - Inputs must be validated with `zod` at the procedure boundary.
-- Output shapes should be inferred from procedures unless the same business contract is reused outside tRPC; put those reusable contracts in `packages/types`.
+- Output shapes should be inferred from procedures unless the same business contract is reused outside tRPC; a reusable contract like that is domain-specific to this app, so it belongs in `apps/api`'s own source (for example `apps/api/src/trpc/`), exported as a type, not in a shared `@jainparichay/*` package. `@jainparichay/types` — the package this used to point to — was retired: its contents were one app's domain model, and shared packages now carry mechanism only (no domain types). Do not resurrect a shared types package for this.
 - Do not import API runtime code into `apps/web`. The web app should import `AppRouter` as a type from `@workspace-starter/api`.
 
 If the requested auth model is vague, inspect `apps/api/src/trpc/context.ts` and decide whether the existing placeholder is enough. Do not pretend a protected procedure is secure until `getUserFromRequest` has real JWT/session verification.
@@ -29,7 +29,7 @@ Inspect and update only the touchpoints the feature actually needs:
 - `apps/api/src/index.ts`: keep type-only exports for router types consumed by the web app.
 - `apps/web/src/lib/trpc.ts`: adjust client links, headers, auth forwarding, or API URL handling.
 - React island components in `apps/web/src/components`: use `trpc.<router>.<procedure>.useQuery()` or `useMutation()` behind `TrpcProvider`.
-- `packages/types/src/*`: add shared DTO/domain types only when they are reused outside one procedure.
+- `apps/api`'s own source: add reusable DTO/domain types there (not in a shared `@jainparichay/*` package — see the note above) only when they are reused outside one procedure.
 - Environment/CORS files or docs: update `PUBLIC_API_URL` and `CORS_ORIGIN` behavior when new origins, credentials, or auth headers require it.
 
 ## Implementation Flow

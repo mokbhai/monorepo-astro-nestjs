@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-cd -P /app/node_modules/@workspace-starter/db
+# apps/api is the deploy root (see Dockerfile), so its own schema and
+# node_modules/.bin are already at $PWD (WORKDIR /app) — no cd needed.
 PATH="$PWD/node_modules/.bin:$PATH"
 export PATH
 prisma migrate deploy

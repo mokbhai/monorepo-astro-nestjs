@@ -6,9 +6,14 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" \"vitest.config.ts\"",
-    "test": "vitest run"
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" \"vitest.config.ts\" \"prisma.config.ts\"",
+    "test": "vitest run",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio"
   },
   "exports": {
     ".": {
@@ -21,10 +26,13 @@
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.28",
     "@nestjs/platform-fastify": "^11.1.28",
+    "@prisma/adapter-pg": "catalog:",
+    "@prisma/client": "catalog:",
     "@trpc/server": "catalog:",
+    "dotenv": "catalog:",
     "fastify": "^5.10.0",
-    "@workspace-starter/db": "workspace:*",
-    "@workspace-starter/types": "workspace:*",
+    "@jainparichay/db": "^0.2.1",
+    "prisma": "catalog:",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "catalog:"
@@ -33,7 +41,7 @@
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
     "@types/node": "catalog:",
-    "@workspace-starter/config-typescript": "workspace:*",
+    "@jainparichay/config-typescript": "^0.1.0",
     "eslint": "catalog:dev-tools",
     "typescript": "catalog:",
     "vitest": "catalog:"

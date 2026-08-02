@@ -11,9 +11,25 @@ RUN npm install --global corepack@0.34.7 && corepack enable
 
 # Resolve dependencies from the lockfile alone so this layer is cached
 # independent of source changes and needs no per-app COPY lines. Adding a
-# frontend or backend requires no edit to this Dockerfile.
-COPY pnpm-lock.yaml ./
-RUN pnpm fetch
+# frontend or backend requires no edit to this Dockerfile. `@jainparichay/*`
+# is fetched from GitHub Packages, so `pnpm fetch` needs auth; the committed
+# .npmrc supplies only the registry mapping (see Task 8). The credential is
+# mounted as a BuildKit secret and written to a user-level npmrc that pnpm
+# trusts, then removed in the same layer so it never persists in an image
+# layer. pnpm-workspace.yaml must also be present at fetch time: it carries
+# `minimumReleaseAgeExclude: ['@jainparichay/*']`, and without it `pnpm
+# fetch` applies this repo's explicit 7-day supply-chain quarantine to our
+# own just-published packages and rejects the lockfile. Fail fast (rather than
+# ~45s later with an unattributed 401) if the secret is empty, which happens
+# when NODE_AUTH_TOKEN isn't set when invoking `docker build`/`docker
+# compose build`.
+COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+RUN --mount=type=secret,id=node_auth_token \
+    tok="$(cat /run/secrets/node_auth_token)"; \
+    [ -n "$tok" ] || { echo "error: NODE_AUTH_TOKEN must be set to fetch @jainparichay/* from GitHub Packages" >&2; exit 1; }; \
+    printf '//npm.pkg.github.com/:_authToken=%s\n' "$tok" > /root/.npmrc \
+ && pnpm fetch \
+ && rm -f /root/.npmrc
 
 COPY . .
 RUN pnpm install --frozen-lockfile --offline
@@ -27,12 +43,32 @@ ENV PRIMARY_FRONTEND=${PRIMARY_FRONTEND}
 # apps/* into apps/web-host/sites (discovered automatically).
 RUN pnpm turbo build --filter=@workspace-starter/web-host...
 RUN node scripts/build-frontends.mjs
-RUN pnpm deploy --legacy --filter @workspace-starter/web-host --prod /app
+
+# `pnpm deploy` re-links @workspace-starter/api (a `workspace:*` dependency
+# of web-host — see #20, the combined Astro/NestJS host) as a plain
+# dependency of the deployed target rather than a workspace project, which
+# subjects its `postinstall` to pnpm's build-script approval gate and fails
+# with ERR_PNPM_IGNORED_BUILDS since it isn't in pnpm-workspace.yaml's
+# `allowBuilds`. That postinstall only runs `prisma generate`, which the
+# next RUN redoes anyway (`pnpm deploy` discards it regardless), so
+# `--ignore-scripts` is safe here. Registry auth is needed again too: this
+# re-resolves `@jainparichay/*` into the fresh deploy-target store.
+RUN --mount=type=secret,id=node_auth_token \
+    tok="$(cat /run/secrets/node_auth_token)"; \
+    [ -n "$tok" ] || { echo "error: NODE_AUTH_TOKEN must be set to fetch @jainparichay/* from GitHub Packages" >&2; exit 1; }; \
+    printf '//npm.pkg.github.com/:_authToken=%s\n' "$tok" > /root/.npmrc \
+ && pnpm deploy --legacy --filter @workspace-starter/web-host --prod --ignore-scripts /app \
+ && rm -f /root/.npmrc
 
 # `pnpm deploy` rebuilds /app/node_modules from the content-addressable store,
 # which discards the Prisma Client generated during the build. The generator
-# has no custom output, so regenerate it inside the deployed tree.
-RUN cd -P /app/node_modules/@workspace-starter/db \
+# has no custom output, so regenerate it inside the deployed tree, against
+# the api's own schema (deployed under node_modules/@workspace-starter/api,
+# since web-host re-links its workspace dependency there rather than at the
+# deploy root — see #20). No DATABASE_URL is needed: `generate` never
+# connects to a database, and `apps/api`'s prisma.config.ts falls back to a
+# placeholder connection string on its own when the variable is unset.
+RUN cd -P /app/node_modules/@workspace-starter/api \
  && PATH="$PWD/node_modules/.bin:$PATH" prisma generate
 
 FROM node:22-slim AS runtime

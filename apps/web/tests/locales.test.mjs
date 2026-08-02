@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { validateCatalogShape } from '@workspace-starter/i18n';
+import { validateCatalogShape } from '@jainparichay/i18n';
 
 const localesDir = path.join(process.cwd(), 'src', 'locales');
 const defaultLocale = 'en';

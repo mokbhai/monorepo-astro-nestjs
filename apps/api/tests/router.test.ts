@@ -1,22 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockFindMany = vi.fn();
-const mockFindUnique = vi.fn();
-const mockCreate = vi.fn();
+const { mockFindMany, mockFindUnique, mockCreate, mockPrisma } = vi.hoisted(
+  () => {
+    const mockFindMany = vi.fn();
+    const mockFindUnique = vi.fn();
+    const mockCreate = vi.fn();
 
-vi.mock('@workspace-starter/db', () => ({
-  prisma: {
-    user: {
-      findMany: mockFindMany,
-      findUnique: mockFindUnique,
-      create: mockCreate,
-    },
-    $connect: vi.fn(),
-    $disconnect: vi.fn(),
+    return {
+      mockFindMany,
+      mockFindUnique,
+      mockCreate,
+      mockPrisma: {
+        user: {
+          findMany: mockFindMany,
+          findUnique: mockFindUnique,
+          create: mockCreate,
+        },
+        $connect: vi.fn(),
+        $disconnect: vi.fn(),
+      },
+    };
   },
+);
+
+vi.mock('../src/prisma/client', () => ({
+  prisma: mockPrisma,
 }));
 
 import { appRouter } from '../src/trpc/router';
+import { createContext } from '../src/trpc/context';
 import type { Context } from '../src/trpc/context';
 
 const sampleUser = {
@@ -106,5 +118,35 @@ describe('appRouter users procedures', () => {
       name: 'Ada Lovelace',
       email: 'ada@example.com',
     });
+  });
+});
+
+describe('createContext', () => {
+  function fakeRequest(headers: Record<string, string> = {}) {
+    return { headers } as unknown as Context['req'];
+  }
+
+  it('wires the shared prisma client onto ctx.db', () => {
+    const ctx = createContext({
+      req: fakeRequest(),
+      res: {} as Context['res'],
+    });
+
+    // `vi.mock` replaces '../src/prisma/client' wholesale, so this cannot see
+    // changes made *inside* the real client.ts (e.g. `prisma` reverting to a
+    // Promise — that drift is caught by `tsc`, not this test). What this does
+    // guard: that the module still exports something named `prisma` (import
+    // fails otherwise) and that `createContext` wires it onto `ctx.db`
+    // without re-wrapping or dropping it.
+    expect(ctx.db).toBe(mockPrisma);
+  });
+
+  it('resolves no user when the request has no bearer token', () => {
+    const ctx = createContext({
+      req: fakeRequest(),
+      res: {} as Context['res'],
+    });
+
+    expect(ctx.user).toBeNull();
   });
 });

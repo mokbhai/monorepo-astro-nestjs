@@ -1,7 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createApi } from '@workspace-starter/api';
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
   createStaticHostServer,
@@ -66,7 +65,14 @@ export async function createCombinedHost(options: CombinedHostOptions) {
 
   try {
     const astro = options.astroRuntime ?? (await loadAstroRuntime(primary));
-    const apiFactory: ApiFactory = options.apiFactory ?? createApi;
+    // Imported lazily (not as a static top-level import) so that loading this
+    // module — e.g. from a test that always supplies its own `apiFactory` —
+    // does not transitively evaluate `@workspace-starter/api`'s Prisma client,
+    // which fails fast at import time when `DATABASE_URL` is unset. That
+    // fail-fast is intentional in the API app; it should only fire when the
+    // API is actually being constructed, not merely referenced as a default.
+    const apiFactory: ApiFactory =
+      options.apiFactory ?? (await import('@workspace-starter/api')).createApi;
     app = await apiFactory({ fastify, cors: false, initialize: false });
 
     fastify.all('/*', async (request, reply) => {

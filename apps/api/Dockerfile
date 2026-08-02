@@ -9,24 +9,58 @@ ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 # container builds resolve the packageManager version deterministically.
 RUN npm install --global corepack@0.34.7 && corepack enable
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 COPY apps/api/package.json apps/api/package.json
-COPY packages/config-typescript/package.json packages/config-typescript/package.json
-COPY packages/db/package.json packages/db/package.json
-COPY packages/types/package.json packages/types/package.json
 
-RUN pnpm install --frozen-lockfile
+# apps/api's postinstall runs `prisma generate` directly against its own
+# schema, so the schema must exist on disk before `pnpm install` below
+# (which triggers that hook) — the rest of the source tree isn't copied
+# until after the install layer, to keep dependency resolution cached
+# independent of source changes.
+COPY apps/api/prisma apps/api/prisma
+COPY apps/api/prisma.config.ts apps/api/prisma.config.ts
+
+# `@jainparichay/*` is fetched from GitHub Packages, which requires auth. The
+# committed .npmrc supplies only the registry mapping (see Task 8); the
+# credential itself is mounted as a BuildKit secret and written to a
+# user-level npmrc that pnpm trusts, then removed in the same layer so it
+# never persists in an image layer. Fail fast (rather than ~45s later with an
+# unattributed 401) if the secret is empty, which happens when NODE_AUTH_TOKEN
+# isn't set when invoking `docker build`/`docker compose build`.
+RUN --mount=type=secret,id=node_auth_token \
+    tok="$(cat /run/secrets/node_auth_token)"; \
+    [ -n "$tok" ] || { echo "error: NODE_AUTH_TOKEN must be set to fetch @jainparichay/* from GitHub Packages" >&2; exit 1; }; \
+    printf '//npm.pkg.github.com/:_authToken=%s\n' "$tok" > /root/.npmrc \
+ && pnpm install --frozen-lockfile \
+ && rm -f /root/.npmrc
 
 COPY . .
 
-RUN pnpm turbo build --filter=@workspace-starter/api...
-
-RUN pnpm deploy --legacy --filter @workspace-starter/api --prod /app
+# Once the rest of the workspace (apps/web, apps/web-host, ...) lands on disk,
+# pnpm's automatic pre-run dependency check (`verify-deps-before-run`, on by
+# default) notices those importers now exist and silently re-installs the
+# full workspace before `turbo` runs — which needs registry auth again, for
+# the same reason as the install above. That implicit re-install is not
+# `--frozen-lockfile` on its own, so make one explicit here: it's a no-op
+# when the manifests and lockfile already agree, and it fails loudly instead
+# of silently re-resolving against a stale lockfile if they ever don't.
+RUN --mount=type=secret,id=node_auth_token \
+    tok="$(cat /run/secrets/node_auth_token)"; \
+    [ -n "$tok" ] || { echo "error: NODE_AUTH_TOKEN must be set to fetch @jainparichay/* from GitHub Packages" >&2; exit 1; }; \
+    printf '//npm.pkg.github.com/:_authToken=%s\n' "$tok" > /root/.npmrc \
+ && pnpm install --frozen-lockfile \
+ && pnpm turbo build --filter=@workspace-starter/api... \
+ && pnpm deploy --legacy --filter @workspace-starter/api --prod /app \
+ && rm -f /root/.npmrc
 
 # `pnpm deploy` rebuilds /app/node_modules from the content-addressable store,
 # which discards the Prisma Client generated during the build. The generator
-# has no custom output, so regenerate it inside the deployed tree.
-RUN cd -P /app/node_modules/@workspace-starter/db \
+# has no custom output, so regenerate it inside the deployed tree, against
+# the app's own schema (deployed to /app since apps/api is the deploy root
+# here). No DATABASE_URL is needed: `generate` never connects to a database,
+# and `apps/api`'s prisma.config.ts falls back to a placeholder connection
+# string on its own when the variable is unset.
+RUN cd -P /app \
  && PATH="$PWD/node_modules/.bin:$PATH" prisma generate
 
 FROM node:22-slim AS runtime

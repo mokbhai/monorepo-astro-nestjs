@@ -1,3 +1,10 @@
+// Must stay the first import in this file: it populates `process.env` from
+// `.env` synchronously, before `./app.module`'s require chain reaches
+// `./prisma/client` and reads `DATABASE_URL` at module-evaluation time.
+// `ConfigModule.forRoot()` (in `app.module.ts`) does the same `.env` load,
+// but only runs once `AppModule` is instantiated — long after that first
+// read already happened. See `load-env.ts` for the full explanation.
+import './load-env';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';

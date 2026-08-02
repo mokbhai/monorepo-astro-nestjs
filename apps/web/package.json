@@ -10,17 +10,14 @@
     "preview": "astro preview",
     "typecheck": "astro check",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"vitest.config.ts\"",
-    "test": "pnpm --filter @workspace-starter/i18n build && node --test tests/*.test.mjs && vitest run"
+    "test": "node --test tests/*.test.mjs && vitest run"
   },
   "dependencies": {
     "@astrojs/node": "^11.0.2",
     "@tanstack/react-query": "^5.101.4",
     "@trpc/client": "catalog:",
     "@trpc/react-query": "catalog:",
-    "@workspace-starter/i18n": "workspace:*",
-    "@workspace-starter/storage": "workspace:*",
-    "@workspace-starter/types": "workspace:*",
-    "@workspace-starter/ui": "workspace:*",
+    "@jainparichay/i18n": "^0.1.0",
     "astro": "^7.1.3",
     "react": "catalog:",
     "react-dom": "catalog:"
@@ -35,7 +32,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@workspace-starter/api": "workspace:*",
-    "@workspace-starter/config-typescript": "workspace:*",
+    "@jainparichay/config-typescript": "^0.1.0",
     "eslint": "catalog:dev-tools",
     "jsdom": "catalog:",
     "tailwindcss": "catalog:",

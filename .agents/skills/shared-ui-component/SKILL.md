@@ -1,6 +1,6 @@
 ---
 name: shared-ui-component
-description: Use when adding or changing reusable React components in packages/ui for the JainParichay template-jp monorepo, especially when component location, CVA variants, cn class merging, src/index.ts exports, React peer dependencies, tsup build behavior, or apps/web usage needs to stay aligned.
+description: Use when adding or changing reusable React components consumed via @jainparichay/ui, or app-local components in apps/web, for the JainParichay template-jp monorepo, especially when component location, CVA variants, cn class merging, src/index.ts exports, React peer dependencies, tsup build behavior, or apps/web usage needs to stay aligned.
 ---
 
 # Shared UI Component
@@ -9,15 +9,23 @@ description: Use when adding or changing reusable React components in packages/u
 
 Use this skill to keep shared UI components small, reusable, and safe to consume from `apps/web`. Prefer the repo's current React library pattern over introducing a new component architecture.
 
-## First Decide If It Belongs In packages/ui
+**`@jainparichay/ui` is not a local workspace in this repo.** It is published from a separate repo, [github.com/JainParichay/packages](https://github.com/JainParichay/packages) (`packages/ui` there), and consumed here as an ordinary `@jainparichay/ui` dependency. The component-shape, exports, and dependency-boundary guidance below describes the pattern that package follows, for reference when you need to add or change a component there — but doing so means making the change in the packages repo and publishing a new version, not editing anything under `template-jp`. This skill's guidance for `apps/web` itself (Web Usage, app-local component decisions) applies directly in this repo.
 
-Put a component in `packages/ui` only when it is a reusable primitive or cross-app building block. Keep it local to `apps/web` when it is tied to one page, one data shape, one route, tRPC calls, Astro content, or business copy.
+**No app in this repo currently depends on `@jainparichay/ui`.** It was removed from `apps/web` and `apps/web-host`'s `package.json` (and from `apps/web/astro.config.ts`'s Vite `optimizeDeps`) because nothing imported it — see the shared-packages-registry migration. Re-add `"@jainparichay/ui": "^0.2.0"` (or the current published version) to an app's `dependencies`, and `@jainparichay/ui` back to `optimizeDeps.include` in `apps/web/astro.config.ts`, before following the Web Usage examples below.
 
-If a request asks to put a domain-specific component into `packages/ui`, push back and recommend a local web component unless the component can be named and used without JainParichay-specific data or copy.
+**As of `0.2.0`, `@jainparichay/ui` carries mechanism only — no hardcoded color palette.** `Button` keeps layout, spacing, transition, focus-visible ring, disabled behavior, and `size` variants, and exports `buttonVariants` so a consuming app composes its own brand colors on top; it defaults `type="button"` but still lets a caller override it. Do not add a default color scheme, theme, or design tokens to a shared component — that is exactly the kind of app-specific decision this package boundary excludes now. See ["State The Boundary" in `AGENTS.md`](../../../AGENTS.md#state-the-boundary) for the rule this exists to enforce.
+
+**`@jainparichay/ui@0.2.0` currently exports exactly `Button`, `buttonVariants`, `ButtonProps`, and `cn` — nothing else.** There is no `Badge` (or any other component) published today. The `Badge` example later in this skill (Component Shape, Exports) is a **hypothetical walkthrough of adding a new component**, written to teach the pattern — do not import `Badge` from `@jainparichay/ui` in real code; it does not exist and the import will fail. The Web Usage section below only uses the real, currently-published `Button`.
+
+## First Decide If It Belongs In @jainparichay/ui
+
+A component belongs in `@jainparichay/ui` only when it is a reusable primitive or cross-app building block needed outside this one product. Keep it local to `apps/web` when it is tied to one page, one data shape, one route, tRPC calls, Astro content, or business copy.
+
+If a request asks to put a domain-specific component into `@jainparichay/ui`, push back and recommend a local web component unless the component can be named and used without JainParichay-specific data or copy. If the component genuinely is reusable, the change belongs in the packages repo.
 
 ## Component Shape
 
-Use the existing package layout:
+The `@jainparichay/ui` package uses this layout (in the packages repo):
 
 ```text
 packages/ui/src/components/ComponentName/ComponentName.tsx
@@ -25,26 +33,21 @@ packages/ui/src/components/ComponentName/ComponentName.tsx
 
 Use `PascalCase` for the folder, file, exported component, and props type. Keep component files self-contained unless there is real shared logic worth extracting.
 
-Follow this pattern for Tailwind variants:
+**The `Badge` below does not exist in the published package** — it is a hypothetical example showing how to add a *new* component to `@jainparichay/ui` in the packages repo, following the pattern its real `Button` uses. Follow this pattern for Tailwind variants — note that `@jainparichay/ui`'s own variants stay **structural only** (layout, spacing, size, transition, focus-visible, disabled); they do not bake in `bg-*`/`text-*`/`border-*` color classes, since color is a brand decision each product makes for itself, not something a shared package should own:
 
 ```tsx
 import { cva, type VariantProps } from 'class-variance-authority';
 import type { ComponentPropsWithoutRef } from 'react';
 import { cn } from '../../utils/cn';
 
-const badgeVariants = cva('inline-flex items-center font-medium', {
+export const badgeVariants = cva('inline-flex items-center font-medium', {
   variants: {
-    variant: {
-      default: 'bg-slate-950 text-white',
-      outline: 'border border-slate-300 text-slate-900',
-    },
     size: {
       sm: 'h-6 px-2 text-xs',
       md: 'h-8 px-3 text-sm',
     },
   },
   defaultVariants: {
-    variant: 'default',
     size: 'md',
   },
 });
@@ -53,23 +56,25 @@ export interface BadgeProps
   extends ComponentPropsWithoutRef<'span'>,
     VariantProps<typeof badgeVariants> {}
 
-export function Badge({ className, variant, size, ...props }: BadgeProps) {
-  return <span className={cn(badgeVariants({ variant, size, className }))} {...props} />;
+export function Badge({ className, size, ...props }: BadgeProps) {
+  return <span className={cn(badgeVariants({ size, className }))} {...props} />;
 }
 ```
 
-For button-like controls, mirror `packages/ui/src/components/Button/Button.tsx`: extend the correct native element attributes, preserve `disabled`, focus-visible, hover, and icon-size states, and let consumers pass `className`.
+Exporting the `cva()` result itself (`badgeVariants`, `buttonVariants`, ...) — not just the component — is what lets a consuming app compose its own color classes on top via `cn(badgeVariants({ size }), 'bg-brand-600 text-white')`, either inline or in an app-local wrapper component.
+
+For button-like controls, mirror `@jainparichay/ui`'s `Button`: extend the correct native element attributes, preserve `disabled`, focus-visible, hover, and icon-size states, default `type="button"` while still letting the caller override it, export `buttonVariants` alongside the component, and let consumers pass `className`.
 
 ## Exports
 
-Every public component must be exported from `packages/ui/src/index.ts`:
+Every public component must be exported from `@jainparichay/ui`'s `src/index.ts` (in the packages repo) — continuing the hypothetical `Badge` from Component Shape above, adding it would mean:
 
 ```ts
 export { Badge } from './components/Badge/Badge';
 export type { BadgeProps } from './components/Badge/Badge';
 ```
 
-Do not import consumers from internal component paths. If a component is not ready to be public API, keep it unexported and do not use it from `apps/web`.
+(the real, current `src/index.ts` only exports `Button`, `buttonVariants`, `ButtonProps`, and `cn` — see the note in Overview). Do not import consumers from internal component paths. If a component is not ready to be public API, keep it unexported and do not use it from `apps/web`.
 
 ## Dependencies And Build Boundaries
 
@@ -85,34 +90,39 @@ Prefer existing `catalog:` entries from `pnpm-workspace.yaml` for shared version
 
 ## Web Usage
 
-Use package imports from web code:
+Use package imports from web code — `Button` is the only component currently published (see the note in Overview). Since the package ships no color palette, an app supplies its own brand color classes on top of the structural ones via `className`. The component merges it in with `cn` (`tailwind-merge` + `clsx`) internally: for any conflicting utility in the same Tailwind class group (for example two `bg-*` classes), whichever one appears **last** in the merged string wins — plain last-wins textual resolution, not CSS specificity. Because the component always appends the caller's `className` after its own structural classes, an app's `bg-*`/`text-*` classes reliably override the (nonexistent, today) structural defaults. `bg-brand-600`/`hover:bg-brand-700` below are **placeholder brand-color tokens for illustration only** — this repo's `apps/web/src/styles/global.css` defines no `brand` utility, so copy these examples with your product's real color classes, not verbatim:
 
 ```tsx
-import { Badge, Button } from '@workspace-starter/ui';
+import { Button } from '@jainparichay/ui';
 
 export function ExampleActions() {
   return (
     <div className="flex items-center gap-3">
-      <Badge variant="outline">Verified</Badge>
-      <Button size="sm">Continue</Button>
+      <Button className="bg-brand-600 text-white hover:bg-brand-700" size="sm">
+        Continue
+      </Button>
     </div>
   );
 }
 ```
 
+If the same brand-color composition is needed in more than one place, wrap it in an app-local component (for example `apps/web/src/components/BrandButton.tsx`) that imports `buttonVariants` from `@jainparichay/ui` and a local `cn`/`clsx` helper, rather than repeating the class string at every call site.
+
 For Astro pages, import from the package root too:
 
 ```astro
 ---
-import { Button } from '@workspace-starter/ui';
+import { Button } from '@jainparichay/ui';
 ---
 
-<Button variant="default" size="lg">Create profile</Button>
+<Button className="bg-brand-600 text-white hover:bg-brand-700" size="lg">
+  Create profile
+</Button>
 ```
 
-Only add a `client:*` directive when the shared component or its children need browser interactivity. Do not import from `../../packages/ui/src/...` in `apps/web`.
+Only add a `client:*` directive when the shared component or its children need browser interactivity. `@jainparichay/ui` is an ordinary published dependency of `apps/web` — there is no local `packages/ui` to import from directly, and (per the note above) it must be added to `apps/web`'s `dependencies` before any of this compiles.
 
-`apps/web/tsconfig.json` already maps `@workspace-starter/ui` to `../../packages/ui/src/index.ts`, and `apps/web/astro.config.mjs` already includes `@workspace-starter/ui` in `optimizeDeps`. Do not edit those files for a normal new component.
+Add `@jainparichay/ui` back to `optimizeDeps.include` in `apps/web/astro.config.ts`'s Vite config when re-adding the dependency (it ships a pre-built `dist/`). `apps/web/tsconfig.json` has no path alias for it — it resolves through normal `node_modules` package resolution like any other dependency. Do not edit either file for a normal new component beyond that one-time re-add; a new export inside the package needs a version bump in the packages repo before it is usable here at all.
 
 ## Quality Bar
 
@@ -125,15 +135,9 @@ Only add a `client:*` directive when the shared component or its children need b
 
 ## Verification
 
-Run the narrowest checks that prove the changed surface:
+`@jainparichay/ui` is not a local workspace, so `pnpm --filter` cannot target it. Verify a change there with the packages repo's own commands (`pnpm --filter @jainparichay/ui lint`, `typecheck`, `build`) before publishing a new version.
 
-```bash
-pnpm --filter @workspace-starter/ui lint
-pnpm --filter @workspace-starter/ui typecheck
-pnpm --filter @workspace-starter/ui build
-```
-
-If `apps/web` consumes the component, also run:
+For a change made in this repo (bumping the `@jainparichay/ui` version, or an app-local component in `apps/web`), run the narrowest checks that prove the changed surface:
 
 ```bash
 pnpm --filter @workspace-starter/web typecheck

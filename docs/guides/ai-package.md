@@ -1,6 +1,8 @@
 # AI Package
 
-`@workspace-starter/ai` is a thin wrapper around the [OpenAI Node.js SDK](https://github.com/openai/openai-node). It provides a typed client factory that resolves configuration from explicit options or environment variables.
+`@jainparichay/ai` is a thin wrapper around the [OpenAI Node.js SDK](https://github.com/openai/openai-node). It provides a typed client factory that resolves configuration from explicit options or environment variables.
+
+Its source, tests, and release history live in [the packages repo](https://github.com/JainParichay/packages) (`packages/ai`), not in this repo. To add it to an app here, add `"@jainparichay/ai": "^0.1.0"` (or the current published version) to that app's `dependencies`. To change its behavior, make the change in the packages repo and publish a new version. Like most `@jainparichay/*` packages, it is ESM-only (`@jainparichay/ui` and `@jainparichay/db` are the exceptions — they additionally ship a CommonJS `require()` entry); a CommonJS consumer needs `await import('@jainparichay/ai')` instead of `require()`.
 
 ## Environment Variables
 
@@ -16,7 +18,7 @@
 ### Explicit Configuration
 
 ```ts
-import { createAiClient } from '@workspace-starter/ai';
+import { createAiClient } from '@jainparichay/ai';
 
 const ai = createAiClient({
   apiKey: 'sk-...',
@@ -30,7 +32,7 @@ const response = await ai.chat([{ role: 'user', content: 'Hello!' }]);
 ### Environment Fallback
 
 ```ts
-import { createAiClient } from '@workspace-starter/ai';
+import { createAiClient } from '@jainparichay/ai';
 
 // Reads OPENAI_API_KEY and OPENAI_BASE_URL from the environment.
 // Throws if OPENAI_API_KEY is not set.

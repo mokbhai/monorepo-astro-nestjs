@@ -2,25 +2,32 @@
 
 ## Rename The Scope
 
-This starter uses the scope `@workspace-starter/*`. Replace it with your own organization or project scope in:
+This starter uses the scope `@workspace-starter/*` for its local apps (`web`, `secondary-web`, `web-host`, `api`). Replace it with your own organization or project scope in:
 
 - root and workspace `package.json` files
 - import statements
 - TypeScript path aliases
 - documentation examples
 
+This rename does not touch `@jainparichay/*` — those are external, independently versioned packages published from [github.com/JainParichay/packages](https://github.com/JainParichay/packages), not part of this repo's scope.
+
 ## Add A New App
 
 1. Create a folder in `apps/`.
 2. Add a `package.json` with workspace scripts.
-3. Add its dependencies using `catalog:` and `workspace:*` where appropriate.
+3. Add its dependencies using `catalog:` and `workspace:*` for internal packages, and the published semver range (for example `^0.1.0`) for `@jainparichay/*` packages.
 4. Make sure its scripts align with the root Turbo tasks.
+5. If the app serves Astro build output through `apps/web-host` (see [deployment.md](./deployment.md)), mirror every `@jainparichay/*` runtime dependency it needs into `apps/web-host`'s own `dependencies` — `tests/repository-guardrails.test.mjs` enforces this, since web-host serves the built output out of its own deployed `node_modules`.
 
 ## Add A Shared Package
 
+Shared code that should be reused across multiple apps or products belongs in [the packages repo](https://github.com/JainParichay/packages) as a new `@jainparichay/*` package, not in this repo's `packages/`. Make the change there, publish a new version, and bump the dependency in the consuming app manifests here.
+
+If instead you want a project-local package — for example, to wrap or extend a `@jainparichay/*` package with behavior specific to this project — add it under your own scope:
+
 1. Create a folder in `packages/`.
 2. Add `package.json`, source files, and `tsconfig.json`.
-3. Reference the shared config package if it is TypeScript-based.
+3. Reference `@jainparichay/config-typescript` if it is TypeScript-based.
 4. Add build/typecheck scripts that fit the monorepo task graph.
 
 ## Environment Variables

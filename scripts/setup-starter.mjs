@@ -4,6 +4,7 @@ import { access, rm } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
+import { ensureRegistryAuthConfigured } from './lib/check-registry-auth.mjs';
 import {
   customizeRootPackageName,
   validatePackageName,
@@ -74,6 +75,13 @@ async function main() {
       'Run this installer from the root of the cloned starter repository.',
     );
   }
+
+  // Step 2 below runs `pnpm install`, which fetches `@jainparichay/*` from
+  // GitHub Packages. Without a token configured, that install fails with
+  // `ERR_PNPM_FETCH_401` — but by then "Rename root package" has already
+  // mutated the repo, leaving a half-customized project with a confusing
+  // error. Fail before any mutation instead.
+  await ensureRegistryAuthConfigured();
 
   const prompter = createPrompter();
 

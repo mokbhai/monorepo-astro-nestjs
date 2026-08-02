@@ -55,6 +55,61 @@ select the same frontend used for the build. A frontend's Astro `base` must
 match its mount path; `build-frontends.mjs` sets `ASTRO_BASE` per app so they
 stay in sync.
 
+## Registry authentication for container builds
+
+`@jainparichay/*` packages are fetched from GitHub Packages during the image
+build, which requires a token even though the packages are public. Both
+`apps/api/Dockerfile` and `apps/web-host/Dockerfile`:
+
+- expect a `node_auth_token` BuildKit secret (`--secret id=node_auth_token`,
+  or the `secrets:` block already wired in `docker-compose.yml` reading the
+  `NODE_AUTH_TOKEN` environment variable),
+- write it to `/root/.npmrc` only for the duration of the `pnpm fetch` /
+  `pnpm deploy` layers that need it, then remove it in the same layer so the
+  token never persists in an image layer, and
+- fail fast with an explicit error if the secret is empty, rather than a
+  45-second-later unattributed 401.
+
+Build with `docker build --secret id=node_auth_token,env=NODE_AUTH_TOKEN ...`
+or `NODE_AUTH_TOKEN=<token> docker compose build`. The committed `.npmrc`
+supplies only the `@jainparichay:registry` mapping; it never carries the
+token itself.
+
+## Regenerating the Prisma Client after `pnpm deploy`
+
+`apps/api` owns its Prisma schema (`apps/api/prisma/`) and its own
+`prisma.config.ts`; `@jainparichay/db` ships no schema of its own, only the
+`createDatabaseClient` connection mechanism `apps/api/src/prisma/client.ts`
+wraps around it. `pnpm deploy --legacy` rebuilds `node_modules` from the
+content-addressable store, which discards whatever Prisma Client was
+generated during the earlier build step (the generator has no custom
+`output`, so there is nothing else to preserve). Both Dockerfiles therefore
+run an explicit regenerate step against wherever `apps/api`'s schema lands
+in the deployed tree — its own deploy root for `apps/api/Dockerfile`:
+
+```bash
+cd -P /app \
+ && PATH="$PWD/node_modules/.bin:$PATH" prisma generate
+```
+
+and the re-linked embedded dependency path for `apps/web-host/Dockerfile`,
+which deploys `@workspace-starter/api` as a `workspace:*` dependency rather
+than as its own deploy root (see `apps/web-host/docker-entrypoint.sh`):
+
+```bash
+cd -P /app/node_modules/@workspace-starter/api \
+ && PATH="$PWD/node_modules/.bin:$PATH" prisma generate
+```
+
+No `DATABASE_URL` is supplied here: `generate` never connects to a
+database, and `apps/api`'s `prisma.config.ts` falls back to a placeholder
+connection string on its own when the variable is unset, rather than
+throwing (it used to throw — this was changed specifically so `prisma
+generate` never needs a shell-conditional `DATABASE_URL=...` wrapper, which
+is POSIX-only and breaks `pnpm install` on Windows). If you change the
+deploy step or add a new deployable app with its own Prisma schema, keep an
+equivalent regenerate step after its `pnpm deploy`.
+
 ## Manual container release
 
 `.github/workflows/build-and-publish.yml` never runs after CI or a push. An

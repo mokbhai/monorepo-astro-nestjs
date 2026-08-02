@@ -144,7 +144,7 @@ test('removeTemplateWebApps removes bundled web apps and rewrites root scripts',
 
     assert.equal(
       await readFile(path.join(tempDir, 'docker-compose.yml'), 'utf8'),
-      `${stockDockerCompose.slice(0, webHostStart)}  api:\n    build:\n      context: .\n      dockerfile: apps/api/Dockerfile\n    environment:\n      NODE_ENV: production\n      PORT: 3001\n      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}\n      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/template_jp?schema=public\n    ports:\n      - '\${API_PORT:-3001}:3001'\n    depends_on:\n      postgres:\n        condition: service_healthy\n${stockDockerCompose.slice(volumesBoundary)}`,
+      `${stockDockerCompose.slice(0, webHostStart)}  api:\n    build:\n      context: .\n      dockerfile: apps/api/Dockerfile\n      secrets:\n        - node_auth_token\n    environment:\n      NODE_ENV: production\n      PORT: 3001\n      CORS_ORIGIN: \${CORS_ORIGIN:-http://localhost:4321,http://127.0.0.1:4321}\n      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/template_jp?schema=public\n    ports:\n      - '\${API_PORT:-3001}:3001'\n    depends_on:\n      postgres:\n        condition: service_healthy\n${stockDockerCompose.slice(volumesBoundary)}`,
     );
   } finally {
     await rm(tempDir, { recursive: true, force: true });
