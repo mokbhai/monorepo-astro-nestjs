@@ -373,26 +373,32 @@ async function isAstroApp(appName) {
 // own deployed `node_modules` (see docker-entrypoint.sh / Dockerfile) in two
 // ways: Astro apps are staged into it as static/SSR output, and other apps it
 // embeds as a `workspace:*` dependency (currently just `@workspace-starter/api`,
-// per #20's combined Astro/NestJS host) run inside its own process. Either
-// way, web-host must carry every non-workspace runtime dependency those apps
-// need as a top-level dependency of its own — the invariant is not specific
-// to the `@jainparichay/*` namespace: `apps/web`'s built server already
-// externalizes third-party packages (e.g. `react`, `react-dom/server`,
-// `react/jsx-runtime`) exactly the same way it externalizes `@jainparichay/*`
-// ones, and the next dependency added to any served app (a new
-// `@tanstack/*`/`@trpc/*` package, say) would reproduce the same silent gap
-// under an unguarded namespace. `workspace:*` specifiers are the only
-// exemption: those resolve through the monorepo's own workspace linking, not
-// through a version web-host needs to mirror. Nothing enforces this mirror
-// structurally, so this test derives all three sets — the apps web-host
-// serves, their non-workspace dependencies, and web-host's own dependencies —
-// from the manifests instead of hardcoding any of them.
+// per #20's combined Astro/NestJS host) run inside its own process. This test
+// guards only the dependencies that are actually resolved from web-host's own
+// deploy-root `node_modules` at runtime: the Astro SSR bundle externalizes
+// `@jainparichay/*` and `react`/`react-dom` instead of bundling them (the
+// built `dist/server` does a bare `import` that Node resolves starting from
+// wherever that file lives, not from the source app's own `node_modules`),
+// and the production entrypoint scripts `cd -P` into `@jainparichay/db` by
+// path (see `apps/api/docker-entrypoint.sh`).
+//
+// It deliberately does NOT extend this to an embedded app's *other*
+// transitive dependencies — e.g. `apps/api`'s own `@nestjs/*`/`@trpc/server`/
+// `rxjs`/etc. Those resolve from `@workspace-starter/api`'s own nested
+// `node_modules`, the same way any pnpm workspace package resolves its own
+// dependencies, so web-host never needs a top-level copy of them. Mirroring
+// them anyway (tried and reverted) just creates a second, independently
+// version-pinned copy of apps/api's dependency list — the exact duplication
+// this shared-packages migration exists to eliminate, and worse than the gap
+// it would guard against.
 // Commit 81417a8 (apps/api's `@workspace-starter/db` gap) and the Task 11
 // web-host 500 (apps/web's `@jainparichay/{i18n,storage,types,ui}` gap) both
 // shipped with `pnpm build`/`typecheck`/`test`/CI green and only failed at
 // container runtime because this mirror silently drifted — one incident from
 // each of the two ways an app ends up served by web-host, both covered here.
-test('web-host mirrors every non-workspace runtime dependency of the apps it serves', async () => {
+// `react`/`react-dom` are also mirrored into web-host by hand today with
+// nothing guarding them; this test now covers those two as well.
+test('web-host mirrors the @jainparichay/*, react, and react-dom dependencies resolved from its deploy root', async () => {
   const appNames = (
     await readdir(new URL('apps/', rootDir), { withFileTypes: true })
   )
@@ -425,7 +431,12 @@ test('web-host mirrors every non-workspace runtime dependency of the apps it ser
     const dependencies = manifest.dependencies ?? {};
 
     for (const [dependencyName, version] of Object.entries(dependencies)) {
-      if (version === 'workspace:*') {
+      const isResolvedFromWebHostDeployRoot =
+        dependencyName.startsWith('@jainparichay/') ||
+        dependencyName === 'react' ||
+        dependencyName === 'react-dom';
+
+      if (!isResolvedFromWebHostDeployRoot) {
         continue;
       }
 
