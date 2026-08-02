@@ -1,8 +1,8 @@
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
-import { getPrisma } from '../prisma/client';
+import { prisma } from '../prisma/client';
 
 // Extend this with redis, user, etc. as the app grows
-export async function createContext({ req, res }: CreateFastifyContextOptions) {
+export function createContext({ req, res }: CreateFastifyContextOptions) {
   // TODO: extract user from JWT / session
   const user = getUserFromRequest(req);
 
@@ -10,7 +10,7 @@ export async function createContext({ req, res }: CreateFastifyContextOptions) {
     req,
     res,
     user,
-    db: await getPrisma(),
+    db: prisma,
   };
 }
 

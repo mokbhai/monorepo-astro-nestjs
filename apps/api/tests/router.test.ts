@@ -1,22 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockFindMany = vi.fn();
-const mockFindUnique = vi.fn();
-const mockCreate = vi.fn();
+const { mockFindMany, mockFindUnique, mockCreate, mockPrisma } = vi.hoisted(
+  () => {
+    const mockFindMany = vi.fn();
+    const mockFindUnique = vi.fn();
+    const mockCreate = vi.fn();
+
+    return {
+      mockFindMany,
+      mockFindUnique,
+      mockCreate,
+      mockPrisma: {
+        user: {
+          findMany: mockFindMany,
+          findUnique: mockFindUnique,
+          create: mockCreate,
+        },
+        $connect: vi.fn(),
+        $disconnect: vi.fn(),
+      },
+    };
+  },
+);
 
 vi.mock('../src/prisma/client', () => ({
-  getPrisma: vi.fn().mockResolvedValue({
-    user: {
-      findMany: mockFindMany,
-      findUnique: mockFindUnique,
-      create: mockCreate,
-    },
-    $connect: vi.fn(),
-    $disconnect: vi.fn(),
-  }),
+  prisma: mockPrisma,
 }));
 
 import { appRouter } from '../src/trpc/router';
+import { createContext } from '../src/trpc/context';
 import type { Context } from '../src/trpc/context';
 
 const sampleUser = {
@@ -106,5 +118,32 @@ describe('appRouter users procedures', () => {
       name: 'Ada Lovelace',
       email: 'ada@example.com',
     });
+  });
+});
+
+describe('createContext', () => {
+  function fakeRequest(headers: Record<string, string> = {}) {
+    return { headers } as unknown as Context['req'];
+  }
+
+  it('wires the shared prisma client onto ctx.db', () => {
+    const ctx = createContext({
+      req: fakeRequest(),
+      res: {} as Context['res'],
+    });
+
+    // This is the assertion that would catch drift in client.ts's export
+    // shape: if `prisma` stopped being a plain object (e.g. reverted to a
+    // promise-returning `getPrisma()`), this identity check would fail.
+    expect(ctx.db).toBe(mockPrisma);
+  });
+
+  it('resolves no user when the request has no bearer token', () => {
+    const ctx = createContext({
+      req: fakeRequest(),
+      res: {} as Context['res'],
+    });
+
+    expect(ctx.user).toBeNull();
   });
 });

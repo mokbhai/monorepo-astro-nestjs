@@ -8,11 +8,11 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\"",
-    "test": "pnpm build && node --test tests/*.test.mjs"
+    "test": "pnpm build && DATABASE_URL=\"${DATABASE_URL:-postgresql://placeholder}\" node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@workspace-starter/api": "workspace:*",
-    "@jainparichay/db": "^0.2.0",
+    "@jainparichay/db": "^0.2.1",
     "@jainparichay/i18n": "^0.1.0",
     "@jainparichay/storage": "^0.1.0",
     "@jainparichay/types": "^0.1.0",

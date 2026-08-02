@@ -121,8 +121,8 @@ importers:
   apps/api:
     dependencies:
       '@jainparichay/db':
-        specifier: ^0.2.0
-        version: 0.2.0(@prisma/adapter-pg@7.9.0)
+        specifier: ^0.2.1
+        version: 0.2.1(@prisma/adapter-pg@7.9.0)
       '@jainparichay/types':
         specifier: ^0.1.0
         version: 0.1.0
@@ -292,8 +292,8 @@ importers:
   apps/web-host:
     dependencies:
       '@jainparichay/db':
-        specifier: ^0.2.0
-        version: 0.2.0(@prisma/adapter-pg@7.9.0)
+        specifier: ^0.2.1
+        version: 0.2.1(@prisma/adapter-pg@7.9.0)
       '@jainparichay/i18n':
         specifier: ^0.1.0
         version: 0.1.0
@@ -1347,8 +1347,8 @@ packages:
   '@jainparichay/config-typescript@0.1.0':
     resolution: {integrity: sha512-HTJ00d2+GnNAo9BtmLTmmrp3NeW5+Iw6IK8v1Sq+9F9zulzaC8jHILXkCVnqx/S85M846yT0b64a5SWWUXv+SQ==, tarball: https://npm.pkg.github.com/download/@jainparichay/config-typescript/0.1.0/f573cf72de3500ca1fbff0a8fa8d3338c318a10f}
 
-  '@jainparichay/db@0.2.0':
-    resolution: {integrity: sha512-vu7x5kDd0ve5C3pGwNK1fN9c7o6o+rUjun4KGUcUCkjZzJ4ez1nfSOL4SvVNiMQ0RlOKJdC7AosKnIQ6u8v3BQ==, tarball: https://npm.pkg.github.com/download/@jainparichay/db/0.2.0/4cc8986148ddacee9db8d5f14997fb80979cae82}
+  '@jainparichay/db@0.2.1':
+    resolution: {integrity: sha512-l+PAydcs2lIww+6zE9N4btM6dFYmVNyYxdyStfo8LV86XLc7+GZhK8t2J1wbT+Vt+HtZ7LuIkrptCFvrQcB/Vg==, tarball: https://npm.pkg.github.com/download/@jainparichay/db/0.2.1/9e96dada53bbf3e66f12aeac273bb4e3413edbc5}
     peerDependencies:
       '@prisma/adapter-pg': ^7.0.0
 
@@ -6121,7 +6121,7 @@ snapshots:
 
   '@jainparichay/config-typescript@0.1.0': {}
 
-  '@jainparichay/db@0.2.0(@prisma/adapter-pg@7.9.0)':
+  '@jainparichay/db@0.2.1(@prisma/adapter-pg@7.9.0)':
     dependencies:
       '@prisma/adapter-pg': 7.9.0
 
