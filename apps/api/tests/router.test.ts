@@ -132,9 +132,12 @@ describe('createContext', () => {
       res: {} as Context['res'],
     });
 
-    // This is the assertion that would catch drift in client.ts's export
-    // shape: if `prisma` stopped being a plain object (e.g. reverted to a
-    // promise-returning `getPrisma()`), this identity check would fail.
+    // `vi.mock` replaces '../src/prisma/client' wholesale, so this cannot see
+    // changes made *inside* the real client.ts (e.g. `prisma` reverting to a
+    // Promise — that drift is caught by `tsc`, not this test). What this does
+    // guard: that the module still exports something named `prisma` (import
+    // fails otherwise) and that `createContext` wires it onto `ctx.db`
+    // without re-wrapping or dropping it.
     expect(ctx.db).toBe(mockPrisma);
   });
 

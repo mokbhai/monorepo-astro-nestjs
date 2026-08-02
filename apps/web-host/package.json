@@ -8,7 +8,7 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\"",
-    "test": "pnpm build && DATABASE_URL=\"${DATABASE_URL:-postgresql://placeholder}\" node --test tests/*.test.mjs"
+    "test": "pnpm build && node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@workspace-starter/api": "workspace:*",
