@@ -24,6 +24,22 @@ const repoRoot = path.resolve(fileURLToPath(import.meta.url), '..', '..');
 const apiPackageJson = path.join(repoRoot, 'apps', 'api', 'package.json');
 const apiNodeModules = path.join(repoRoot, 'apps', 'api', 'node_modules');
 
+// `pnpm db:migrate`/`db:deploy`/`db:studio` are root scripts, so a root `.env`
+// (the file Getting Started tells readers to `cp .env.example .env` into) is
+// never read automatically — nothing here or in pnpm loads it into
+// `process.env`. Load it explicitly by absolute path (not relying on cwd,
+// since this script is also invoked from apps/api's postinstall with a
+// different cwd) so `DATABASE_URL` is actually available the way the docs
+// imply. Already-set environment variables win over the file, matching how
+// `process.loadEnvFile` and every other .env loader behaves.
+try {
+  process.loadEnvFile(path.join(repoRoot, '.env'));
+} catch {
+  // No root `.env` present — fine for `generate` (falls back to a
+  // placeholder below) and surfaced clearly for every other subcommand by
+  // the DATABASE_URL check right after this.
+}
+
 const args = process.argv.slice(2);
 const isGenerate = args[0] === 'generate';
 

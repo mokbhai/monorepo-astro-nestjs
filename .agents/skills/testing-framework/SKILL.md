@@ -40,7 +40,7 @@ Respect existing workspace ownership:
 - Root `tests/*.test.mjs`: repository guardrails and setup-script behavior that is intentionally framework-light.
 - `apps/api/tests/` or colocated `*.test.ts`: backend router, service, Nest module, and HTTP integration tests.
 - `apps/web/tests/` or colocated `*.test.ts(x)`: Astro, React island, data loading, and web-specific tests.
-- `packages/*/tests/` or colocated `*.test.ts(x)`: package contracts and reusable utilities.
+- `packages/*/tests/` or colocated `*.test.ts(x)`: contracts and reusable utilities for an app-local package. Shared `@jainparichay/*` packages are published from a separate repo (`github.com/JainParichay/packages`) and are not a local workspace here by default; their own tests live and run there, not in this repo.
 - `tests/e2e/` with a root Playwright config: full-stack browser tests that may coordinate more than one workspace.
 
 When adding shared test dependencies, prefer catalog entries in `pnpm-workspace.yaml` and package-level `devDependencies`. Keep root scripts as aggregators; package scripts should own their own focused test commands.

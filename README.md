@@ -154,7 +154,8 @@ schema from the installed `@jainparichay/db` package (its `prisma.config.ts`
 points at its own bundled `schema.prisma` and `migrations/`) rather than a
 local `prisma/` folder in this repo. `db:generate` runs automatically on
 `pnpm install` via `apps/api`'s `postinstall`; `db:migrate`, `db:deploy`, and
-`db:studio` need `DATABASE_URL` set (see `.env.example`).
+`db:studio` need `DATABASE_URL` set — `scripts/prisma.mjs` loads it from the
+root `.env` you created in Getting Started, so no extra setup is needed here.
 
 Useful workspace-focused commands:
 

@@ -19,9 +19,24 @@ async function readJson(relativePath) {
 }
 
 async function listPackageJsonFiles(directory) {
-  const entries = await readdir(new URL(`${directory}/`, rootDir), {
-    withFileTypes: true,
-  });
+  let entries;
+  try {
+    entries = await readdir(new URL(`${directory}/`, rootDir), {
+      withFileTypes: true,
+    });
+  } catch (error) {
+    // Self-healing: `packages/` does not exist by default in this repo
+    // anymore (shared libraries are external `@jainparichay/*` dependencies),
+    // but the docs explicitly tell readers they may add their own
+    // `packages/<name>` workspace. If they do, this directory reappears and
+    // should automatically come back under the invariants below — only a
+    // genuinely missing directory should be silently skipped, not any other
+    // failure.
+    if (error?.code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
 
   return entries
     .filter((entry) => entry.isDirectory())
@@ -170,6 +185,11 @@ test('combined web-host image deploys API, frontend, and migration runtime depen
   assert.notEqual(hostIndex, -1);
   assert.ok(migrateIndex < hostIndex);
   assert.match(entrypoint, /node_modules\/@jainparichay\/db/);
+  // `pnpm deploy` discards the Prisma Client generated during the build (it
+  // re-links node_modules from the store), so the image must regenerate it
+  // against the deployed tree — commit 81417a8's second defect was exactly
+  // this step silently missing.
+  assert.match(dockerfile, /prisma generate/);
 });
 
 test('api production startup applies migrations before starting the server', async () => {
@@ -193,6 +213,9 @@ test('api production startup applies migrations before starting the server', asy
     /\|\||;/,
     'migration failure must stop startup',
   );
+  // Same rationale as the web-host Dockerfile test above: `pnpm deploy`
+  // discards the build-time Prisma Client, so the image must regenerate it.
+  assert.match(dockerfile, /prisma generate/);
 });
 
 // This test intentionally excludes `node_modules` from the isolated copy so
@@ -280,10 +303,15 @@ test('api production deploy includes a runnable Prisma migration artifact', asyn
 test('workspace package manifests keep shared graph invariants', async () => {
   // Shared libraries used to live in `packages/*` as workspace members; they
   // are now published externally as `@jainparichay/*` (see
-  // docs/guides/pnpm-workspace.md), so only `apps/*` remains a workspace
-  // source of package manifests. An app may still add its own `packages/*`
-  // under its own scope, in which case it should be added back here.
-  const packageFiles = await listPackageJsonFiles('apps');
+  // docs/guides/pnpm-workspace.md), so `packages/*` does not exist by
+  // default. Docs explicitly tell readers they may add their own
+  // `packages/<name>` workspace, though, so `listPackageJsonFiles` degrades
+  // to an empty list rather than failing when the directory is absent —
+  // these invariants apply automatically again the moment one is added.
+  const packageFiles = [
+    ...(await listPackageJsonFiles('apps')),
+    ...(await listPackageJsonFiles('packages')),
+  ];
   const manifests = await Promise.all(
     packageFiles.map(async (file) => [file, await readJson(file)]),
   );
@@ -330,50 +358,62 @@ test('workspace package manifests keep shared graph invariants', async () => {
 async function isAstroApp(appName) {
   // Detect Astro apps structurally (presence of an astro config file) rather
   // than by name, so this keeps working if apps are added, renamed, or
-  // removed.
-  const candidateConfigFiles = [
-    'astro.config.ts',
-    'astro.config.mjs',
-    'astro.config.js',
-    'astro.config.cjs',
-  ];
+  // removed. Match the filename pattern instead of enumerating extensions so
+  // less common ones (`.mts`, `.cts`) are covered too.
+  const appDirEntries = await readdir(new URL(`apps/${appName}/`, rootDir), {
+    withFileTypes: true,
+  }).catch(() => []);
 
-  for (const fileName of candidateConfigFiles) {
-    const exists = await stat(new URL(`apps/${appName}/${fileName}`, rootDir))
-      .then(() => true)
-      .catch(() => false);
-    if (exists) {
-      return true;
-    }
-  }
-
-  return false;
+  return appDirEntries.some(
+    (entry) => entry.isFile() && /^astro\.config\./.test(entry.name),
+  );
 }
 
-// `apps/web-host` serves the Astro apps' built output directly out of its own
-// deployed `node_modules` (see docker-entrypoint.sh / Dockerfile), so it must
-// carry every `@jainparichay/*` runtime dependency those apps need as a
-// top-level dependency of its own. Nothing enforces that mirror structurally,
-// so this test derives both sides from the manifests instead of hardcoding
-// today's package list — commit 81417a8 and the Task 11 web-host 500 both
+// `apps/web-host` serves other apps' built/runtime output directly out of its
+// own deployed `node_modules` (see docker-entrypoint.sh / Dockerfile) in two
+// ways: Astro apps are staged into it as static/SSR output, and other apps it
+// embeds as a `workspace:*` dependency (currently just `@workspace-starter/api`,
+// per #20's combined Astro/NestJS host) run inside its own process. Either
+// way, web-host must carry every `@jainparichay/*` runtime dependency those
+// apps need as a top-level dependency of its own. Nothing enforces that
+// mirror structurally, so this test derives all three sets — the apps
+// web-host serves, their `@jainparichay/*` dependencies, and web-host's own
+// dependencies — from the manifests instead of hardcoding any of them.
+// Commit 81417a8 (apps/api's `@workspace-starter/db` gap) and the Task 11
+// web-host 500 (apps/web's `@jainparichay/{i18n,storage,types,ui}` gap) both
 // shipped with `pnpm build`/`typecheck`/`test`/CI green and only failed at
-// container runtime because this mirror silently drifted.
-test('web-host mirrors every @jainparichay/* runtime dependency of the Astro apps it serves', async () => {
+// container runtime because this mirror silently drifted — one incident from
+// each of the two ways an app ends up served by web-host, both covered here.
+test('web-host mirrors every @jainparichay/* runtime dependency of the apps it serves', async () => {
   const appNames = (
     await readdir(new URL('apps/', rootDir), { withFileTypes: true })
   )
     .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name);
+    .map((entry) => entry.name)
+    .filter((appName) => appName !== 'web-host');
+
+  const appManifestsByDirectory = new Map(
+    await Promise.all(
+      appNames.map(async (appName) => [
+        appName,
+        await readJson(`apps/${appName}/package.json`),
+      ]),
+    ),
+  );
 
   const webHostManifest = await readJson('apps/web-host/package.json');
   const webHostDependencies = webHostManifest.dependencies ?? {};
 
   for (const appName of appNames) {
-    if (!(await isAstroApp(appName))) {
+    const manifest = appManifestsByDirectory.get(appName);
+    const isEmbeddedInWebHost =
+      webHostDependencies[manifest.name] === 'workspace:*';
+    const servesAstroOutput = await isAstroApp(appName);
+
+    if (!isEmbeddedInWebHost && !servesAstroOutput) {
       continue;
     }
 
-    const manifest = await readJson(`apps/${appName}/package.json`);
     const dependencies = manifest.dependencies ?? {};
 
     for (const [dependencyName, version] of Object.entries(dependencies)) {
@@ -385,7 +425,7 @@ test('web-host mirrors every @jainparichay/* runtime dependency of the Astro app
         webHostDependencies[dependencyName],
         version,
         `apps/web-host must declare ${dependencyName}@${version} in dependencies ` +
-          `(apps/${appName} depends on it and web-host serves its built output at runtime)`,
+          `(apps/${appName} depends on it and web-host serves it at runtime)`,
       );
     }
   }
