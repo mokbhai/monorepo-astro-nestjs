@@ -20,6 +20,9 @@ The workspace is defined in [pnpm-workspace.yaml](../../pnpm-workspace.yaml).
 - `actions/setup-node` with `registry-url` set in CI, or
 - a BuildKit secret written to `/root/.npmrc` inside the Dockerfile (see [deployment.md](./deployment.md)).
 
+Migrating an app that still carries its own local copies of these packages?
+See [migrating-apps-to-shared-packages.md](./migrating-apps-to-shared-packages.md).
+
 ## Useful Commands
 
 ```bash
