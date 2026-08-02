@@ -70,6 +70,12 @@ Supply the token locally instead:
 pnpm config set //npm.pkg.github.com/:_authToken <a GitHub token with read:packages>
 ```
 
+While the `@jainparichay/*` packages are private, `read:packages` scope alone
+is not enough: the token must also belong to a member of the `JainParichay`
+GitHub org, or GitHub Packages returns a 401 regardless of scope. (If the
+packages are later made public, this org-membership requirement goes away
+and `read:packages` scope is sufficient on its own.)
+
 (In CI this comes from `actions/setup-node` with `registry-url` set; in Docker
 builds it comes from a BuildKit secret — see
 [docs/guides/deployment.md](docs/guides/deployment.md).)
@@ -187,8 +193,14 @@ the [packages repo](https://github.com/JainParichay/packages).
 Useful Docker commands:
 
 ```bash
-docker compose up --build
+NODE_AUTH_TOKEN=<a GitHub token with read:packages> docker compose up --build
 ```
+
+`NODE_AUTH_TOKEN` is required — both Dockerfiles fetch `@jainparichay/*` from
+GitHub Packages during the build and fail fast with an explicit error
+("`NODE_AUTH_TOKEN must be set...`") if it's empty, rather than failing later
+with an unattributed 401. See "1. Authenticate to GitHub Packages" above for
+how to obtain a token.
 
 The compose file runs the **combined web host** (NestJS/tRPC, the primary Astro SSR runtime, and static secondary Astro apps) plus PostgreSQL. It exposes one application port. The API retains its standalone Dockerfile and startup command for a future split deployment. See [docs/guides/deployment.md](docs/guides/deployment.md).
 
@@ -225,7 +237,7 @@ If you want to start with your own frontend instead of the bundled web examples,
 
 1. Install dependencies with `pnpm install`.
 2. Run the workspace with `pnpm dev`.
-3. Explore the web app, API, and shared packages.
+3. Explore the web app and API.
 4. Rename the scope and packages for your project.
 5. Run `pnpm verify:fast` before committing.
 6. Add new apps or packages as the monorepo grows.

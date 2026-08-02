@@ -26,6 +26,13 @@ async function loadDeployAdapterHelpers() {
   return import(moduleUrl.href);
 }
 
+async function loadRegistryAuthHelpers() {
+  const moduleUrl = pathToFileURL(
+    path.join(process.cwd(), 'scripts/lib/check-registry-auth.mjs'),
+  );
+  return import(moduleUrl.href);
+}
+
 test('customizeRootPackageName updates only the root package name', async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'starter-setup-'));
 
@@ -100,6 +107,35 @@ test('scaffoldDeployAdapter writes a stub adapter for a valid target', async () 
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+});
+
+test('isRegistryAuthConfigured treats empty and "undefined" as not configured', async () => {
+  const { isRegistryAuthConfigured } = await loadRegistryAuthHelpers();
+
+  assert.equal(isRegistryAuthConfigured(''), false);
+  assert.equal(isRegistryAuthConfigured('\n'), false);
+  assert.equal(isRegistryAuthConfigured('undefined'), false);
+  assert.equal(isRegistryAuthConfigured('undefined\n'), false);
+  assert.equal(isRegistryAuthConfigured('ghp_examplenotarealtoken\n'), true);
+});
+
+test('ensureRegistryAuthConfigured resolves when a token is configured', async () => {
+  const { ensureRegistryAuthConfigured } = await loadRegistryAuthHelpers();
+
+  await ensureRegistryAuthConfigured({
+    runCapture: async () => ({ stdout: 'ghp_examplenotarealtoken\n' }),
+  });
+});
+
+test('ensureRegistryAuthConfigured fails fast with a README-pointing message when no token is configured', async () => {
+  const { ensureRegistryAuthConfigured } = await loadRegistryAuthHelpers();
+
+  await assert.rejects(
+    ensureRegistryAuthConfigured({
+      runCapture: async () => ({ stdout: 'undefined\n' }),
+    }),
+    /pnpm config set .*_authToken.*README\.md.*Authenticate to GitHub Packages/s,
+  );
 });
 
 test('removeInstallerArtifacts deletes only installer files before commit', async () => {

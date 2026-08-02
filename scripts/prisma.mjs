@@ -112,12 +112,21 @@ try {
     }
   }
 } catch (error) {
-  if (!existsSync(apiNodeModules)) {
-    // `pnpm deploy`'s legacy implementation runs apps/api's postinstall
-    // against the *source* workspace before apps/api/node_modules has been
-    // linked at all — there is nothing to generate against yet, and the
-    // Dockerfiles regenerate the client after `pnpm deploy` completes
-    // anyway. Skip narrowly and say so; never fail silently otherwise.
+  // `pnpm deploy`'s legacy implementation runs apps/api's `postinstall`
+  // against the *source* workspace before apps/api/node_modules has been
+  // linked at all — there is nothing to generate against yet, and the
+  // Dockerfiles regenerate the client after `pnpm deploy` completes anyway.
+  // Skip narrowly and say so — but only when this really is that automatic
+  // postinstall pass (`npm_lifecycle_event === 'postinstall'`). A
+  // user-invoked `pnpm db:generate` hitting the same "node_modules not
+  // linked yet" condition is not in that situation — the skip message
+  // would describe a cause the user isn't experiencing and exit 0 on what
+  // is, for them, a real failure. Never fail silently otherwise.
+  const isDeployPostinstallPass =
+    process.env.npm_lifecycle_event === 'postinstall' &&
+    !existsSync(apiNodeModules);
+
+  if (isDeployPostinstallPass) {
     console.warn(
       'warning: skipping prisma generate (node_modules not linked yet — pnpm deploy source pass)',
     );

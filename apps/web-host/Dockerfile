@@ -18,8 +18,8 @@ RUN npm install --global corepack@0.34.7 && corepack enable
 # trusts, then removed in the same layer so it never persists in an image
 # layer. pnpm-workspace.yaml must also be present at fetch time: it carries
 # `minimumReleaseAgeExclude: ['@jainparichay/*']`, and without it `pnpm
-# fetch` applies the default 7-day supply-chain quarantine to our own
-# just-published packages and rejects the lockfile. Fail fast (rather than
+# fetch` applies this repo's explicit 7-day supply-chain quarantine to our
+# own just-published packages and rejects the lockfile. Fail fast (rather than
 # ~45s later with an unattributed 401) if the secret is empty, which happens
 # when NODE_AUTH_TOKEN isn't set when invoking `docker build`/`docker
 # compose build`.

@@ -374,17 +374,25 @@ async function isAstroApp(appName) {
 // ways: Astro apps are staged into it as static/SSR output, and other apps it
 // embeds as a `workspace:*` dependency (currently just `@workspace-starter/api`,
 // per #20's combined Astro/NestJS host) run inside its own process. Either
-// way, web-host must carry every `@jainparichay/*` runtime dependency those
-// apps need as a top-level dependency of its own. Nothing enforces that
-// mirror structurally, so this test derives all three sets — the apps
-// web-host serves, their `@jainparichay/*` dependencies, and web-host's own
-// dependencies — from the manifests instead of hardcoding any of them.
+// way, web-host must carry every non-workspace runtime dependency those apps
+// need as a top-level dependency of its own — the invariant is not specific
+// to the `@jainparichay/*` namespace: `apps/web`'s built server already
+// externalizes third-party packages (e.g. `react`, `react-dom/server`,
+// `react/jsx-runtime`) exactly the same way it externalizes `@jainparichay/*`
+// ones, and the next dependency added to any served app (a new
+// `@tanstack/*`/`@trpc/*` package, say) would reproduce the same silent gap
+// under an unguarded namespace. `workspace:*` specifiers are the only
+// exemption: those resolve through the monorepo's own workspace linking, not
+// through a version web-host needs to mirror. Nothing enforces this mirror
+// structurally, so this test derives all three sets — the apps web-host
+// serves, their non-workspace dependencies, and web-host's own dependencies —
+// from the manifests instead of hardcoding any of them.
 // Commit 81417a8 (apps/api's `@workspace-starter/db` gap) and the Task 11
 // web-host 500 (apps/web's `@jainparichay/{i18n,storage,types,ui}` gap) both
 // shipped with `pnpm build`/`typecheck`/`test`/CI green and only failed at
 // container runtime because this mirror silently drifted — one incident from
 // each of the two ways an app ends up served by web-host, both covered here.
-test('web-host mirrors every @jainparichay/* runtime dependency of the apps it serves', async () => {
+test('web-host mirrors every non-workspace runtime dependency of the apps it serves', async () => {
   const appNames = (
     await readdir(new URL('apps/', rootDir), { withFileTypes: true })
   )
@@ -417,7 +425,7 @@ test('web-host mirrors every @jainparichay/* runtime dependency of the apps it s
     const dependencies = manifest.dependencies ?? {};
 
     for (const [dependencyName, version] of Object.entries(dependencies)) {
-      if (!dependencyName.startsWith('@jainparichay/')) {
+      if (version === 'workspace:*') {
         continue;
       }
 
@@ -446,4 +454,61 @@ test('root Turbo invocations reference configured tasks', async () => {
       );
     }
   }
+});
+
+// The registry-auth wiring this branch adds is the most novel, most
+// cross-cutting thing here, and every piece of it only fails in CI or a
+// container build (a committed token 401s installs everywhere; a missing
+// registry mapping or exclude 401s/quarantines CI and Docker builds
+// specifically) — the exact silent-failure class the rest of this file works
+// to close. Guard each piece structurally so a regression is caught locally.
+test('registry-auth wiring for @jainparichay/* stays intact', async () => {
+  const [npmrc, workspaceYaml, apiDockerfile, webHostDockerfile, compose, ci] =
+    await Promise.all([
+      readText('.npmrc'),
+      readText('pnpm-workspace.yaml'),
+      readText('apps/api/Dockerfile'),
+      readText('apps/web-host/Dockerfile'),
+      readText('docker-compose.yml'),
+      readText('.github/workflows/ci.yml'),
+    ]);
+
+  // pnpm ignores a token in a committed .npmrc by design; putting one there
+  // fails every install with ERR_PNPM_FETCH_401 instead of leaking a secret.
+  assert.match(
+    npmrc,
+    /^@jainparichay:registry=https:\/\/npm\.pkg\.github\.com$/m,
+  );
+  assert.doesNotMatch(npmrc, /_authToken/);
+
+  assert.match(
+    workspaceYaml,
+    /minimumReleaseAgeExclude:\s*\n\s*-\s*'@jainparichay\/\*'/,
+  );
+
+  for (const dockerfile of [apiDockerfile, webHostDockerfile]) {
+    assert.match(dockerfile, /COPY[^\n]*\.npmrc/);
+    assert.match(dockerfile, /--mount=type=secret,id=node_auth_token/);
+  }
+
+  assert.match(compose, /^secrets:/m);
+  assert.match(
+    compose,
+    /node_auth_token:\s*\n\s*environment:\s*NODE_AUTH_TOKEN/,
+  );
+
+  assert.match(ci, /registry-url:\s*https:\/\/npm\.pkg\.github\.com/);
+  assert.match(
+    ci,
+    /NODE_AUTH_TOKEN:\s*\$\{\{\s*secrets\.NODE_AUTH_TOKEN\s*\}\}/,
+  );
+});
+
+// scripts/prisma.mjs is COPY'd alone into apps/api's build layer (see
+// apps/api/Dockerfile), before the rest of the repo is present — a relative
+// import would resolve against a directory that doesn't exist in that image
+// and break the build with no other coverage of this constraint.
+test('scripts/prisma.mjs has no relative import', async () => {
+  const source = await readText('scripts/prisma.mjs');
+  assert.doesNotMatch(source, /^import .* from '\.\//m);
 });

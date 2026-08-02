@@ -18,9 +18,13 @@ reproduce it.
 
 ## Prerequisites
 
-- A GitHub personal access token with `read:packages` scope (the
-  `@jainparichay/*` packages are public, but GitHub Packages still requires
-  authentication to fetch them).
+- A GitHub personal access token with `read:packages` scope. The
+  `@jainparichay/*` packages currently have private visibility, so
+  `read:packages` scope alone is not enough — the token must also belong to a
+  member of the `JainParichay` GitHub org, or GitHub Packages returns a 401
+  regardless of scope. (If the packages are later made public, this
+  org-membership requirement goes away and `read:packages` scope on its own
+  is sufficient.)
 - Your app already uses PNPM workspaces. If it doesn't, adapt the `.npmrc`
   and `pnpm-workspace.yaml` steps to your package manager's equivalents.
 
