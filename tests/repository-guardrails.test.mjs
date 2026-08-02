@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cp, mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
+import {
+  cp,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -210,10 +219,14 @@ test('api production startup applies migrations before starting the server', asy
   const apiIndex = entrypoint.indexOf('exec node /app/dist/main');
   assert.match(entrypoint, /^#!\/bin\/sh\nset -eu\n/);
   // apps/api is its own deploy root (see Dockerfile), so its schema and
-  // node_modules/.bin already live at $PWD (WORKDIR /app) — no `cd` into a
-  // nested package is needed, unlike the web-host entrypoint above.
+  // node_modules/.bin already live at $PWD (WORKDIR /app) — a `cd` into a
+  // nested package isn't needed here the way it is in the web-host
+  // entrypoint above, but this deliberately does not forbid one (e.g. an
+  // explicit `cd -P /app`): that form is strictly safer against a changed
+  // WORKDIR than relying on it implicitly, so the real invariant to assert
+  // is what actually matters for safety — migrations run before the server
+  // starts, and a failed migration cannot be silently bypassed.
   assert.match(entrypoint, /PATH="\$PWD\/node_modules\/\.bin:\$PATH"/);
-  assert.doesNotMatch(entrypoint, /cd -P/);
   assert.notEqual(migrateIndex, -1);
   assert.notEqual(apiIndex, -1);
   assert.ok(migrateIndex < apiIndex, 'migrations must run before API startup');
@@ -311,22 +324,105 @@ test('api production deploy includes a runnable Prisma migration artifact', asyn
       ),
     ]);
 
-    // `apps/api`'s `prisma.config.ts` throws if `DATABASE_URL` is unset,
-    // even for `--version` (it loads config eagerly). `--version` never
-    // connects to a database, so a placeholder is sufficient. No `cd` is
-    // needed (unlike the web-host case elsewhere in this file) because
-    // apps/api is the deploy root itself.
+    // `apps/api`'s `prisma.config.ts` falls back to a placeholder connection
+    // string when `DATABASE_URL` is unset (it loads config eagerly, even for
+    // `--version`), so this deliberately runs with no `DATABASE_URL` set at
+    // all — proving the fallback, not just that a value happens to be
+    // present. `--version` never connects to a database. No `cd` is needed
+    // (unlike the web-host case elsewhere in this file) because apps/api is
+    // the deploy root itself.
+    const envWithoutDatabaseUrl = { ...process.env };
+    delete envWithoutDatabaseUrl.DATABASE_URL;
     const { stdout } = await execFileAsync(
       '/bin/sh',
       ['-c', 'PATH="$PWD/node_modules/.bin:$PATH" prisma --version'],
       {
         cwd: deployDir,
-        env: { ...process.env, DATABASE_URL: 'postgresql://placeholder' },
+        env: envWithoutDatabaseUrl,
       },
     );
     assert.match(stdout, /prisma\s+: 7\./);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+// This is (at least) the third time this project has shipped a "works when
+// DATABASE_URL is exported into the shell, fails when it only lives in the
+// documented `.env` file" bug. `apps/api/src/prisma/client.ts` calls
+// `createDatabaseClient` at *module-evaluation time*, and in the emitted
+// CommonJS, `require`s run top-to-bottom before the rest of a file's own
+// body executes — so the require chain `bootstrap.ts` → `./app.module` →
+// `./prisma/prisma.module` → `./prisma/client` reaches that eager call
+// before `app.module.ts`'s own `@Module({...})` decorator (further down the
+// same file) invokes `ConfigModule.forRoot({ envFilePath: [...] })`, which
+// is what actually reads `.env` into `process.env`. A newcomer following
+// the README (`cp .env.example .env` → `pnpm install` → `pnpm db:deploy` →
+// `pnpm dev`/`pnpm start`) never exports `DATABASE_URL` as a real
+// environment variable — it only ever lives in that `.env` file — so every
+// *other* test in this suite that verifies startup/build behavior with
+// `DATABASE_URL` present in `process.env` (exported by the test runner's own
+// environment, or passed explicitly, as in the deploy test above) is blind
+// to this exact failure shape. `apps/api/src/load-env.ts`, imported first in
+// `bootstrap.ts` specifically so it runs before that require chain reaches
+// `./app.module`, fixes this by loading `.env` synchronously up front. This
+// test proves it: it requires the *built* `dist/bootstrap.js` (not
+// `dist/main.js` — this must never attempt an actual `NestFactory.create` or
+// database connection, only the module-evaluation-time require chain) from
+// a sandboxed directory containing nothing but a `.env` file and symlinked
+// `node_modules`/`dist`, with `DATABASE_URL` deliberately absent from the
+// child process's own environment. Revert `bootstrap.ts`'s `./load-env`
+// import (or delete `load-env.ts`) and this test fails with the same
+// `@jainparichay/db: no database URL` error a real `pnpm dev`/`pnpm start`
+// would throw.
+test('api bootstrap does not require an exported DATABASE_URL — a .env file is enough', async () => {
+  const apiDir = fileURLToPath(new URL('apps/api/', rootDir));
+  const nestBin = path.join(apiDir, 'node_modules', '.bin', 'nest');
+
+  // Always rebuild so this checks the current source, not a stale `dist/`
+  // left over from an unrelated previous run — this test must fail whenever
+  // the fix it guards is reverted, regardless of what ran before it.
+  await execFileAsync(nestBin, ['build'], { cwd: apiDir });
+
+  const sandboxDir = await mkdtemp(path.join(tmpdir(), 'api-env-shape-'));
+  try {
+    // Symlinked, not copied: bare-specifier requires (`@nestjs/core`,
+    // `@jainparichay/db`, ...) inside `dist/` must resolve exactly the way
+    // they do for the real app, and relative requires between compiled
+    // files (`./load-env`, `./app.module`, ...) need the real directory
+    // structure intact.
+    await symlink(
+      path.join(apiDir, 'node_modules'),
+      path.join(sandboxDir, 'node_modules'),
+      'dir',
+    );
+    await symlink(
+      path.join(apiDir, 'dist'),
+      path.join(sandboxDir, 'dist'),
+      'dir',
+    );
+    // The only `DATABASE_URL` source available to the child process: a
+    // `.env` file at the sandbox root, found via `load-env.ts`'s own
+    // `['.env', '../../.env']` search (resolved relative to `cwd`, which is
+    // this sandbox). No ambient `.env` from this repo's real working tree
+    // is reachable from here.
+    await writeFile(
+      path.join(sandboxDir, '.env'),
+      'DATABASE_URL=postgresql://placeholder@localhost:5432/env-shape-check\n',
+    );
+
+    const sandboxEnv = { ...process.env };
+    delete sandboxEnv.DATABASE_URL;
+
+    // Success is simply not throwing: `execFileAsync` rejects (and fails
+    // this test) if the child process exits non-zero, which is exactly what
+    // happens when `createDatabaseClient` throws at require time.
+    await execFileAsync('node', ['-e', "require('./dist/bootstrap.js')"], {
+      cwd: sandboxDir,
+      env: sandboxEnv,
+    });
+  } finally {
+    await rm(sandboxDir, { recursive: true, force: true });
   }
 });
 
@@ -337,15 +433,38 @@ test('api production deploy includes a runnable Prisma migration artifact', asyn
 // one app's data model) that this migration removed. Resolve the installed
 // package's location via Node's own module resolution (survives hoisting
 // differences) rather than hardcoding a `node_modules` path.
-test('@jainparichay/db ships no prisma/ directory (mechanism only)', async (t) => {
+// Resolves upward from a file to the nearest ancestor directory containing
+// a `package.json` — the package root, however many directories deep the
+// package's own entry point happens to live (today it's one level, under
+// `dist/`; asserting a fixed depth would let this test silently stop
+// checking anything, and pass, the moment the package restructures).
+async function findPackageRoot(fromFile) {
+  let dir = path.dirname(fromFile);
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const hasPackageJson = await stat(path.join(dir, 'package.json'))
+      .then((stats) => stats.isFile())
+      .catch(() => false);
+    if (hasPackageJson) {
+      return dir;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      throw new Error(`No package.json found above ${fromFile}`);
+    }
+    dir = parent;
+  }
+}
+
+test('@jainparichay/db ships no prisma/ directory or PrismaClient export (mechanism only)', async (t) => {
   const apiPackageJsonPath = fileURLToPath(
     new URL('apps/api/package.json', rootDir),
   );
+  const require = createRequire(apiPackageJsonPath);
   let dbEntryPoint;
 
   try {
-    dbEntryPoint =
-      createRequire(apiPackageJsonPath).resolve('@jainparichay/db');
+    dbEntryPoint = require.resolve('@jainparichay/db');
   } catch (error) {
     if (error?.code === 'MODULE_NOT_FOUND') {
       t.skip('@jainparichay/db is not installed (run `pnpm install` first)');
@@ -354,9 +473,7 @@ test('@jainparichay/db ships no prisma/ directory (mechanism only)', async (t) =
     throw error;
   }
 
-  // The resolved entry point is `dist/index.{js,cjs}`; the package root is
-  // one level above `dist`.
-  const dbPackageRoot = path.join(path.dirname(dbEntryPoint), '..');
+  const dbPackageRoot = await findPackageRoot(dbEntryPoint);
   const hasPrismaDirectory = await stat(path.join(dbPackageRoot, 'prisma'))
     .then((stats) => stats.isDirectory())
     .catch(() => false);
@@ -366,6 +483,17 @@ test('@jainparichay/db ships no prisma/ directory (mechanism only)', async (t) =
     false,
     '@jainparichay/db must not ship a prisma/ directory — schemas belong ' +
       "in the consuming app's own package",
+  );
+
+  // The other half of the leak this guards against: even without a shipped
+  // schema, re-exporting a generated `PrismaClient` would couple every
+  // consumer to one specific schema shape baked into the shared package.
+  const dbModule = require('@jainparichay/db');
+  assert.equal(
+    'PrismaClient' in dbModule,
+    false,
+    '@jainparichay/db must not export a PrismaClient — that would bake one ' +
+      "consumer's schema into the shared package",
   );
 });
 
@@ -440,34 +568,48 @@ async function isAstroApp(appName) {
 
 // `apps/web-host` serves other apps' built/runtime output directly out of its
 // own deployed `node_modules` (see docker-entrypoint.sh / Dockerfile) in two
-// ways: Astro apps are staged into it as static/SSR output, and other apps it
-// embeds as a `workspace:*` dependency (currently just `@workspace-starter/api`,
-// per #20's combined Astro/NestJS host) run inside its own process. This test
-// guards only the dependencies that are actually resolved from web-host's own
-// deploy-root `node_modules` at runtime: the Astro SSR bundle externalizes
-// `@jainparichay/*` and `react`/`react-dom` instead of bundling them (the
-// built `dist/server` does a bare `import` that Node resolves starting from
-// wherever that file lives, not from the source app's own `node_modules`),
-// and the production entrypoint scripts `cd -P` into `@jainparichay/db` by
-// path (see `apps/api/docker-entrypoint.sh`).
+// ways: Astro apps are staged into it as static/SSR output, and it also
+// embeds `@workspace-starter/api` as a `workspace:*` dependency that runs
+// in-process (per #20's combined Astro/NestJS host). Only the first of these
+// two ways puts a dependency's resolution root at web-host's own deploy-root
+// `node_modules`: Astro's SSR build *externalizes* `@jainparichay/*` and
+// `react`/`react-dom` rather than bundling them, so the built `dist/server`
+// does a bare `import` that Node resolves starting from wherever that
+// compiled file physically ends up on disk — which is a plain copy nested
+// under web-host's own directory tree (see `scripts/build-frontends.mjs`),
+// not a pnpm-linked package with its own `node_modules`. That walk up the
+// directory tree lands on web-host's own top-level `node_modules`, so those
+// three names must be declared there.
 //
-// It deliberately does NOT extend this to an embedded app's *other*
-// transitive dependencies — e.g. `apps/api`'s own `@nestjs/*`/`@trpc/server`/
-// `rxjs`/etc. Those resolve from `@workspace-starter/api`'s own nested
-// `node_modules`, the same way any pnpm workspace package resolves its own
-// dependencies, so web-host never needs a top-level copy of them. Mirroring
-// them anyway (tried and reverted) just creates a second, independently
-// version-pinned copy of apps/api's dependency list — the exact duplication
-// this shared-packages migration exists to eliminate, and worse than the gap
-// it would guard against.
-// Commit 81417a8 (apps/api's `@workspace-starter/db` gap) and the Task 11
-// web-host 500 (apps/web's `@jainparichay/{i18n,storage,types,ui}` gap) both
-// shipped with `pnpm build`/`typecheck`/`test`/CI green and only failed at
-// container runtime because this mirror silently drifted — one incident from
-// each of the two ways an app ends up served by web-host, both covered here.
-// `react`/`react-dom` are also mirrored into web-host by hand today with
-// nothing guarding them; this test now covers those two as well.
-test('web-host mirrors the @jainparichay/*, react, and react-dom dependencies resolved from its deploy root', async () => {
+// The embedded case is different in kind, not degree: `@workspace-starter/api`
+// is installed as a real pnpm dependency (a `workspace:*` package, complete
+// with pnpm's isolated per-package `node_modules`), so it resolves *its own*
+// dependencies — `@jainparichay/db` included — from its own nested
+// `node_modules`/`.pnpm` linkage, exactly the way `@nestjs/*`, `@trpc/server`,
+// `rxjs`, etc. already do. Mirroring any of an embedded app's own
+// dependencies into the host is therefore never required by the runtime, and
+// only creates a second, independently-drifting copy of that app's manifest.
+// This was verified empirically, not just reasoned about: `pnpm deploy
+// --legacy --filter @workspace-starter/web-host --prod` was run against a
+// copy of this repo with `@jainparichay/db` removed from
+// `apps/web-host/package.json`, and `node`'s own resolution of
+// `await import('@workspace-starter/api')` from the deployed tree still
+// found `@jainparichay/db` via `@workspace-starter/api`'s own nested
+// `node_modules/.pnpm` entry — then the full combined host (`dist/server.js`)
+// was started from that deploy and answered an HTTP request successfully
+// with no `@jainparichay/db` anywhere in web-host's own `node_modules`.
+// `apps/web-host/package.json` no longer declares `@jainparichay/db` as a
+// result (see `docs/guides/migrating-apps-to-shared-packages.md` Step 7,
+// which used to claim both mechanisms in the same breath — this test and
+// that doc must keep telling the same story).
+//
+// Commit 81417a8 (apps/api's `@workspace-starter/db` gap, from *before* this
+// distinction was drawn) and the Task 11 web-host 500 (apps/web's
+// `@jainparichay/{i18n,storage,types,ui}` gap) both shipped with `pnpm
+// build`/`typecheck`/`test`/CI green and only failed at container runtime
+// because this mirror silently drifted — both were Astro-output gaps, which
+// is exactly the class this test still guards.
+test('web-host mirrors the @jainparichay/*, react, and react-dom dependencies that Astro SSR output externalizes from its deploy root', async () => {
   const appNames = (
     await readdir(new URL('apps/', rootDir), { withFileTypes: true })
   )
@@ -475,28 +617,15 @@ test('web-host mirrors the @jainparichay/*, react, and react-dom dependencies re
     .map((entry) => entry.name)
     .filter((appName) => appName !== 'web-host');
 
-  const appManifestsByDirectory = new Map(
-    await Promise.all(
-      appNames.map(async (appName) => [
-        appName,
-        await readJson(`apps/${appName}/package.json`),
-      ]),
-    ),
-  );
-
   const webHostManifest = await readJson('apps/web-host/package.json');
   const webHostDependencies = webHostManifest.dependencies ?? {};
 
   for (const appName of appNames) {
-    const manifest = appManifestsByDirectory.get(appName);
-    const isEmbeddedInWebHost =
-      webHostDependencies[manifest.name] === 'workspace:*';
-    const servesAstroOutput = await isAstroApp(appName);
-
-    if (!isEmbeddedInWebHost && !servesAstroOutput) {
+    if (!(await isAstroApp(appName))) {
       continue;
     }
 
+    const manifest = await readJson(`apps/${appName}/package.json`);
     const dependencies = manifest.dependencies ?? {};
 
     for (const [dependencyName, version] of Object.entries(dependencies)) {
@@ -513,7 +642,7 @@ test('web-host mirrors the @jainparichay/*, react, and react-dom dependencies re
         webHostDependencies[dependencyName],
         version,
         `apps/web-host must declare ${dependencyName}@${version} in dependencies ` +
-          `(apps/${appName} depends on it and web-host serves it at runtime)`,
+          `(apps/${appName}'s Astro SSR output resolves it from web-host's own node_modules at runtime)`,
       );
     }
   }

@@ -29,6 +29,7 @@
     "@prisma/adapter-pg": "catalog:",
     "@prisma/client": "catalog:",
     "@trpc/server": "catalog:",
+    "dotenv": "catalog:",
     "fastify": "^5.10.0",
     "@jainparichay/db": "^0.2.1",
     "prisma": "catalog:",
@@ -41,7 +42,6 @@
     "@nestjs/schematics": "^11.1.0",
     "@types/node": "catalog:",
     "@jainparichay/config-typescript": "^0.1.0",
-    "dotenv": "catalog:",
     "eslint": "catalog:dev-tools",
     "typescript": "catalog:",
     "vitest": "catalog:"

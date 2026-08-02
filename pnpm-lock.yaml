@@ -144,6 +144,9 @@ importers:
       '@trpc/server':
         specifier: 'catalog:'
         version: 11.18.0(typescript@6.0.3)
+      dotenv:
+        specifier: 'catalog:'
+        version: 17.4.2
       fastify:
         specifier: ^5.10.0
         version: 5.10.0
@@ -172,9 +175,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.1
-      dotenv:
-        specifier: 'catalog:'
-        version: 17.4.2
       eslint:
         specifier: catalog:dev-tools
         version: 10.8.0(jiti@2.7.0)(supports-color@8.1.1)
