@@ -100,6 +100,11 @@ any real query. (Use `db:deploy`, not `db:migrate`, for this — `migrate dev`
 is for authoring new migrations during development and can prompt or reset
 the database, which is the wrong behavior for a first-run setup step.)
 
+`pnpm dev` runs the API and the Astro apps with hot reload — it does not run
+the combined production-style host (`apps/web-host`), which has no
+meaningful "dev mode" of its own: it only ever serves prebuilt Astro output.
+Use `pnpm start` (below) to run that combined host locally.
+
 Default local ports:
 
 - Web: `http://127.0.0.1:4321`
