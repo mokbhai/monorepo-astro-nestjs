@@ -12,9 +12,7 @@
   },
   "dependencies": {
     "@workspace-starter/api": "workspace:*",
-    "@jainparichay/db": "^0.2.1",
     "@jainparichay/i18n": "^0.1.0",
-    "@jainparichay/storage": "^0.1.0",
     "@workspace-starter/web": "workspace:*",
     "fastify": "^5.10.0",
     "react": "catalog:",

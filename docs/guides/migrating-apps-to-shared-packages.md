@@ -535,57 +535,78 @@ Update every Dockerfile that installs dependencies for this app:
    do the same rather than being surprised by an `ERR_PNPM_FETCH_401` deep
    into a build that appeared to already have working credentials.
 
-## Step 7: A deployed host app must declare every `@jainparichay/*` package it serves at runtime
+## Step 7: A deployed host app must mirror the `@jainparichay/*` packages its served Astro output externalizes
 
 This is the bug that shipped **twice** during this migration, and both
 times it was invisible to `pnpm build`, `pnpm typecheck`, `pnpm test`, and
 CI — it only failed when the container actually ran.
 
-If your app (call it a "host") serves another app's built output directly
-out of its own deployed `node_modules` — for example, `apps/web-host` in
-this repo runs `@workspace-starter/api` in-process as a `workspace:*`
-dependency, and separately serves Astro apps' static/SSR output — then the
-host's own `package.json` `dependencies` must include every
-`@jainparichay/*` package that the served apps' _built output actually
-resolves from the host's `node_modules` at runtime_ (Astro's SSR build
-externalizes rather than bundles these, so the compiled server does a bare
-`import` that Node resolves starting from wherever that file ends up), even
-if the host's own code never imports them directly. `pnpm deploy --prod`
-only installs what a package's own manifest declares; if the served app
-needs `@jainparichay/db` but the host doesn't declare it, the host's
-deployed image is missing it and fails at runtime with no earlier signal.
-This does **not** extend to an embedded app's _other_ dependencies (e.g. a
-NestJS API's own `@nestjs/*` packages) — those resolve from that app's own
-nested `node_modules`, the same way any workspace package resolves its own
-dependencies, and mirroring them into the host would just create a second,
-independently-drifting copy of the served app's manifest.
+If your app (call it a "host") stages another app's **Astro SSR build**
+output directly under its own deployed tree — for example, `apps/web-host`
+in this repo stages `apps/web`'s built output via
+`scripts/build-frontends.mjs` — then the host's own `package.json`
+`dependencies` must include every `@jainparichay/*` package (plus `react`
+and `react-dom`) that the served Astro app declares, at the same version,
+even if the host's own code never imports them directly. This is specific
+to Astro's SSR build: it _externalizes_ rather than bundles these packages,
+so the compiled server does a bare `import` that Node resolves starting
+from wherever that compiled file physically ends up on disk. Since
+`build-frontends.mjs` stages Astro output as a plain file copy nested under
+the host's own directory tree (not a pnpm-linked package with its own
+`node_modules`), that resolution walk lands on the host's own top-level
+`node_modules` — so it must be declared there. `pnpm deploy --prod` only
+installs what a package's own manifest declares; if the served app needs
+`@jainparichay/i18n` but the host doesn't declare it, the host's deployed
+image is missing it and fails at runtime with no earlier signal.
 
-Concretely: `apps/web` depends on `@jainparichay/{i18n,storage}`, and
-`apps/web-host` serves its built output, so `apps/web-host`'s
-`package.json` lists both as direct dependencies too (plus
-`@jainparichay/db`, for `@workspace-starter/api`'s embedded dependency — a
-separate instance of the same rule). The same applies to `react`/
-`react-dom`, which Astro's SSR build externalizes the same way. Compare
+This does **not** extend to an app the host embeds as a real `workspace:*`
+**pnpm dependency** — for example, `apps/web-host` also runs
+`@workspace-starter/api` in-process (per #20's combined Astro/NestJS host).
+An embedded app like that is installed with pnpm's normal isolated
+per-package linkage, so it resolves _all_ of its own dependencies —
+`@nestjs/*`, `@trpc/server`, `rxjs`, and (equally) any `@jainparichay/*`
+package such as `@jainparichay/db` — from its own nested `node_modules`,
+the same way any pnpm workspace package resolves its own dependencies.
+Mirroring an embedded app's dependencies into the host is never required by
+the runtime, and only creates a second, independently-drifting copy of that
+app's manifest. This distinction was drawn the hard way: an earlier version
+of this repo declared `@jainparichay/db` in `apps/web-host/package.json`
+"because `@workspace-starter/api` needs it," reasoning by analogy from the
+Astro case above. It was empirically wrong — removing it, running `pnpm
+deploy --legacy --filter @workspace-starter/web-host --prod`, and starting
+the deployed combined host confirmed `@workspace-starter/api` still
+resolved `@jainparichay/db` from its own nested `node_modules`/`.pnpm`
+linkage and served a request successfully with no `@jainparichay/db`
+anywhere in web-host's own `node_modules`.
+
+Concretely: `apps/web` depends on `@jainparichay/i18n`, and `apps/web-host`
+serves its built Astro output, so `apps/web-host`'s `package.json` lists it
+as a direct dependency too. The same applies to `react`/`react-dom`, which
+Astro's SSR build externalizes the same way. Compare
 [`apps/web/package.json`](../../apps/web/package.json) and
 [`apps/web-host/package.json`](../../apps/web-host/package.json) in this
 repo — the overlap is intentional and required, not duplication to clean
-up. If your app adds `@jainparichay/ui` back (see the
-`shared-ui-component` skill's note that no app here currently depends on
-it), a host serving that app's output needs it mirrored the same way.
+up. `@workspace-starter/api`'s own `@jainparichay/db` dependency is
+deliberately **not** mirrored there, per the previous paragraph. If your
+app adds `@jainparichay/ui` back (see the `shared-ui-component` skill's
+note that no app here currently depends on it) to an Astro app the host
+serves, that host needs it mirrored the same way.
 
 Copy the guardrail test that catches this automatically:
 [`tests/repository-guardrails.test.mjs`](../../tests/repository-guardrails.test.mjs),
 specifically the test named `'web-host mirrors the @jainparichay/*, react,
-and react-dom dependencies resolved from its deploy root'`. It derives the
-set of apps a host serves (either as an embedded `workspace:*` dependency,
-or as staged Astro output) and asserts the host's manifest carries every
-`@jainparichay/*`/`react`/`react-dom` dependency those apps declare, at the
-matching version — deliberately not every dependency those apps have, only
-the ones actually resolved from the host's own `node_modules`. Adapt both
-the "which apps count as served" detection and the allowlist of guarded
-package names to your own host's mechanism if it differs from this repo's
-(for example, if your host also serves an app that externalizes a different
-third-party package at build time).
+and react-dom dependencies that Astro SSR output externalizes from its
+deploy root'`. It derives the set of Astro apps a host stages (structurally,
+by the presence of an `astro.config.*`) and asserts the host's manifest
+carries every `@jainparichay/*`/`react`/`react-dom` dependency those Astro
+apps declare, at the matching version — deliberately not every dependency
+those apps have, only the ones actually resolved from the host's own
+`node_modules`, and deliberately not extended to apps the host embeds as a
+plain pnpm `workspace:*` dependency. Adapt both the "which apps count as
+served Astro output" detection and the allowlist of guarded package names
+to your own host's mechanism if it differs from this repo's (for example,
+if your host also serves an app that externalizes a different third-party
+package at build time).
 
 ## Step 8: ESM-only packages
 

@@ -212,9 +212,6 @@ importers:
       '@jainparichay/i18n':
         specifier: ^0.1.0
         version: 0.1.0
-      '@jainparichay/storage':
-        specifier: ^0.1.0
-        version: 0.1.0
       '@tanstack/react-query':
         specifier: ^5.101.4
         version: 5.101.4(react@19.2.8)
@@ -282,13 +279,7 @@ importers:
 
   apps/web-host:
     dependencies:
-      '@jainparichay/db':
-        specifier: ^0.2.1
-        version: 0.2.1(@prisma/adapter-pg@7.9.0)
       '@jainparichay/i18n':
-        specifier: ^0.1.0
-        version: 0.1.0
-      '@jainparichay/storage':
         specifier: ^0.1.0
         version: 0.1.0
       '@workspace-starter/api':
@@ -1339,9 +1330,6 @@ packages:
 
   '@jainparichay/i18n@0.1.0':
     resolution: {integrity: sha512-WFggzKvNFj4F510e1sbHy43sWvtvQfjQ7I1WK1tasUQsgiE3ElaQfMdI6jSCSl9eJEmHBAmKsBuoOnWH7Qr0hA==, tarball: https://npm.pkg.github.com/download/@jainparichay/i18n/0.1.0/d35d367c2dfa2437a1be0e7a3415e7394dafdbcd}
-
-  '@jainparichay/storage@0.1.0':
-    resolution: {integrity: sha512-SLPPSInUKmi2YBzuNlpTmxT9201vuJiPy70WbeMwefD6BfgxipdBVBWrBi0nvOyl1dFi5Dx+Ls2ttE575QscwQ==, tarball: https://npm.pkg.github.com/download/@jainparichay/storage/0.1.0/2171aa2b80a272fe63960981f5905081db7c094f}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -6096,8 +6084,6 @@ snapshots:
       '@prisma/adapter-pg': 7.9.0
 
   '@jainparichay/i18n@0.1.0': {}
-
-  '@jainparichay/storage@0.1.0': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
