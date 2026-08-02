@@ -15,6 +15,8 @@ Use this skill to keep shared UI components small, reusable, and safe to consume
 
 **As of `0.2.0`, `@jainparichay/ui` carries mechanism only — no hardcoded color palette.** `Button` keeps layout, spacing, transition, focus-visible ring, disabled behavior, and `size` variants, and exports `buttonVariants` so a consuming app composes its own brand colors on top; it defaults `type="button"` but still lets a caller override it. Do not add a default color scheme, theme, or design tokens to a shared component — that is exactly the kind of app-specific decision this package boundary excludes now. See ["State The Boundary" in `AGENTS.md`](../../../AGENTS.md#state-the-boundary) for the rule this exists to enforce.
 
+**`@jainparichay/ui@0.2.0` currently exports exactly `Button`, `buttonVariants`, `ButtonProps`, and `cn` — nothing else.** There is no `Badge` (or any other component) published today. The `Badge` example later in this skill (Component Shape, Exports) is a **hypothetical walkthrough of adding a new component**, written to teach the pattern — do not import `Badge` from `@jainparichay/ui` in real code; it does not exist and the import will fail. The Web Usage section below only uses the real, currently-published `Button`.
+
 ## First Decide If It Belongs In @jainparichay/ui
 
 A component belongs in `@jainparichay/ui` only when it is a reusable primitive or cross-app building block needed outside this one product. Keep it local to `apps/web` when it is tied to one page, one data shape, one route, tRPC calls, Astro content, or business copy.
@@ -31,7 +33,7 @@ packages/ui/src/components/ComponentName/ComponentName.tsx
 
 Use `PascalCase` for the folder, file, exported component, and props type. Keep component files self-contained unless there is real shared logic worth extracting.
 
-Follow this pattern for Tailwind variants — note that `@jainparichay/ui`'s own variants stay **structural only** (layout, spacing, size, transition, focus-visible, disabled); they do not bake in `bg-*`/`text-*`/`border-*` color classes, since color is a brand decision each product makes for itself, not something a shared package should own:
+**The `Badge` below does not exist in the published package** — it is a hypothetical example showing how to add a *new* component to `@jainparichay/ui` in the packages repo, following the pattern its real `Button` uses. Follow this pattern for Tailwind variants — note that `@jainparichay/ui`'s own variants stay **structural only** (layout, spacing, size, transition, focus-visible, disabled); they do not bake in `bg-*`/`text-*`/`border-*` color classes, since color is a brand decision each product makes for itself, not something a shared package should own:
 
 ```tsx
 import { cva, type VariantProps } from 'class-variance-authority';
@@ -65,14 +67,14 @@ For button-like controls, mirror `@jainparichay/ui`'s `Button`: extend the corre
 
 ## Exports
 
-Every public component must be exported from `@jainparichay/ui`'s `src/index.ts` (in the packages repo):
+Every public component must be exported from `@jainparichay/ui`'s `src/index.ts` (in the packages repo) — continuing the hypothetical `Badge` from Component Shape above, adding it would mean:
 
 ```ts
 export { Badge } from './components/Badge/Badge';
 export type { BadgeProps } from './components/Badge/Badge';
 ```
 
-Do not import consumers from internal component paths. If a component is not ready to be public API, keep it unexported and do not use it from `apps/web`.
+(the real, current `src/index.ts` only exports `Button`, `buttonVariants`, `ButtonProps`, and `cn` — see the note in Overview). Do not import consumers from internal component paths. If a component is not ready to be public API, keep it unexported and do not use it from `apps/web`.
 
 ## Dependencies And Build Boundaries
 
@@ -88,15 +90,14 @@ Prefer existing `catalog:` entries from `pnpm-workspace.yaml` for shared version
 
 ## Web Usage
 
-Use package imports from web code. Since the package ships no color palette, an app supplies its own brand color classes on top of the structural ones via `className` — the component merges it in with `cn` internally, so app classes win over structural defaults but not over each other's specificity:
+Use package imports from web code — `Button` is the only component currently published (see the note in Overview). Since the package ships no color palette, an app supplies its own brand color classes on top of the structural ones via `className`. The component merges it in with `cn` (`tailwind-merge` + `clsx`) internally: for any conflicting utility in the same Tailwind class group (for example two `bg-*` classes), whichever one appears **last** in the merged string wins — plain last-wins textual resolution, not CSS specificity. Because the component always appends the caller's `className` after its own structural classes, an app's `bg-*`/`text-*` classes reliably override the (nonexistent, today) structural defaults. `bg-brand-600`/`hover:bg-brand-700` below are **placeholder brand-color tokens for illustration only** — this repo's `apps/web/src/styles/global.css` defines no `brand` utility, so copy these examples with your product's real color classes, not verbatim:
 
 ```tsx
-import { Badge, Button } from '@jainparichay/ui';
+import { Button } from '@jainparichay/ui';
 
 export function ExampleActions() {
   return (
     <div className="flex items-center gap-3">
-      <Badge className="bg-slate-950 text-white">Verified</Badge>
       <Button className="bg-brand-600 text-white hover:bg-brand-700" size="sm">
         Continue
       </Button>

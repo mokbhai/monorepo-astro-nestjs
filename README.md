@@ -35,7 +35,7 @@ Shared code — i18n helpers, storage helpers, database-connection mechanism, an
 
 The sample app is intentionally real enough to prove the architecture:
 
-- The web app imports the published shared i18n and storage packages.
+- The web app imports the published shared i18n package (`@jainparichay/storage` is also declared as a dependency, for apps that need it, but nothing in this sample imports it yet).
 - The API imports the published `@jainparichay/db` package for its Prisma-adapter connection mechanism, while owning its own schema and migrations under `apps/api/prisma/`.
 - React islands call the typed tRPC API.
 - Frontend and backend code share contracts through the API's own tRPC router types (`AppRouter`), exported from `apps/api`.

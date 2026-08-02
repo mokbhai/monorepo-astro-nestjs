@@ -226,12 +226,36 @@ part of the old design this migration exists to remove.
 1. **Keep (or create) your app's own Prisma schema and migrations** under
    the app's own directory — for example `apps/<name>/prisma/schema.prisma`
    and `apps/<name>/prisma/migrations/`. This repo's
-   [`apps/api/prisma/`](../../apps/api/prisma/) is the reference layout.
+   [`apps/api/prisma/`](../../apps/api/prisma/) is the reference layout:
+
+   ```prisma
+   generator client {
+     provider = "prisma-client-js"
+   }
+
+   datasource db {
+     provider = "postgresql"
+   }
+   ```
+
+   **If you're migrating a pre-existing schema, delete its `url =
+env("DATABASE_URL")` line from the `datasource` block above.** That's
+   where Prisma 5/6-era schemas normally put the connection string, and
+   leaving it there is the single most likely stall point in this whole
+   migration: `url` moves out of the schema entirely and into
+   `prisma.config.ts`'s `datasource.url` (see item 4 below) — this repo's
+   schema has no `url` field at all, on purpose. Prisma's CLI errors on a
+   mismatch here don't mention `prisma.config.ts` or point back at this
+   step, so if you see an unfamiliar datasource-related error, check this
+   first.
+
 2. **Add `@prisma/adapter-pg` yourself.** `@jainparichay/db` declares it as
    a `peerDependency` (`^7.0.0`), not something it pulls in for you — add it
    to your app's `dependencies` alongside `prisma` and `@prisma/client`.
    This repo's [`apps/api/package.json`](../../apps/api/package.json) pins
-   all three to the same `catalog:` entry.
+   all three to the same version (`^7.9.0`) via `catalog:` — they're three
+   separate catalog entries in [`pnpm-workspace.yaml`](../../pnpm-workspace.yaml)
+   that happen to share a version, not one shared entry.
 3. **Wrap `@prisma/client` with `createDatabaseClient`,** not the other way
    around. This repo's
    [`apps/api/src/prisma/client.ts`](../../apps/api/src/prisma/client.ts)
@@ -290,12 +314,17 @@ path: 'prisma/migrations' }, datasource: { url: databaseUrl } })`; adjust
    `DATABASE_URL` is unset even for `generate`, which never touches a
    database, and a fresh clone or CI checkout won't have a real one yet.
    `prisma` has to be a `dependency`, not a `devDependency`, even though it
-   is only ever invoked at install/build/migrate time: `pnpm deploy --prod`
-   strips `devDependencies` from the deployed tree, and this same
-   `postinstall` runs again inside that deployed tree (see Step 6), where
-   it needs `prisma` on `PATH`. Leaving `prisma` under `devDependencies` is
-   exactly the mistake that broke `pnpm deploy --prod` for this app during
-   this migration — don't repeat it.
+   is only ever invoked at install/build/migrate time. This is subtle
+   because `pnpm deploy --prod` itself does **not** fail if you get it
+   wrong — it strips `devDependencies` from the deployed tree but still
+   exits `0`. What actually breaks is downstream, at the two places that
+   run `prisma` _against_ that deployed tree: the Dockerfile's post-deploy
+   client-regenerate step (`apps/api/Dockerfile`, see Step 6) fails with
+   `command not found: prisma` because the deployed `node_modules/.bin` has
+   no `prisma` binary, and `docker-entrypoint.sh`'s `prisma migrate deploy`
+   at container start fails the exact same way. Leaving `prisma` under
+   `devDependencies` shipped exactly this failure during this migration —
+   don't repeat it.
 
 There is no resolver script to route the convenience commands through
 anymore; wire the root scripts straight to your app's own, the way this

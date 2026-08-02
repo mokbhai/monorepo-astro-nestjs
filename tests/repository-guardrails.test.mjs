@@ -236,14 +236,27 @@ test('api production startup applies migrations before starting the server', asy
 // `prisma generate` with no fallback for an uninstalled tree (unlike the
 // `scripts/prisma.mjs` this replaced, which special-cased a missing
 // `apps/api/node_modules` as a `pnpm deploy` "source pass" no-op). Skipping
-// the install and jumping straight to `pnpm deploy` reproduces that exact
-// gap: `pnpm deploy` resolves and links `apps/api`'s dependencies (including
-// `prisma`) into the isolated tree as part of the same operation, but the
-// `prisma` binary in `node_modules/.bin` was observed not yet present at the
-// moment the postinstall script runs, so it fails with `sh: prisma: command
-// not found` even though `prisma` is correctly declared in `dependencies`.
-// A preceding full install avoids this ordering gap entirely, exactly as
-// the Dockerfiles' own build sequence does.
+// the install and jumping straight to `pnpm deploy` reproduces this exactly:
+// `pnpm deploy` resolves and links `apps/api`'s dependencies (including
+// `prisma`) into the isolated tree as part of the same operation, but at
+// the moment the postinstall script runs, the `prisma` binary is not yet
+// linked into `node_modules/.bin`, so it fails with `sh: prisma: command
+// not found` — even though `prisma` is correctly declared in `dependencies`
+// (confirmed by reproducing this directly: the failure disappears once a
+// full install precedes `pnpm deploy`, and reappears if that install is
+// removed). A preceding full install avoids this ordering gap entirely,
+// exactly as the Dockerfiles' own build sequence does.
+//
+// This is a distinct failure mode from `prisma` being misplaced under
+// `devDependencies` (see the migrating-apps guide's Step 5), but the two
+// share the exact same downstream symptom if either regresses silently:
+// `pnpm deploy --prod` itself keeps exiting `0` in both cases, and the
+// actual breakage only surfaces afterward, at `apps/api/Dockerfile`'s
+// post-deploy `prisma generate` regenerate step and
+// `apps/api/docker-entrypoint.sh`'s `prisma migrate deploy` — both fail
+// with "command not found" once `node_modules/.bin/prisma` is missing from
+// the deployed tree. This test's assertions (below) are what actually catch
+// that, since `pnpm deploy`'s own exit code does not.
 test('api production deploy includes a runnable Prisma migration artifact', async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'api-production-deploy-'));
   const isolatedRepoDir = path.join(tempDir, 'repo');
