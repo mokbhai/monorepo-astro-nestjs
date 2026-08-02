@@ -122,6 +122,8 @@ jobs:
           build-args: |
             PUBLIC_API_URL=${{ inputs.public_api_url }}
             PRIMARY_FRONTEND=${{ inputs.primary_frontend }}
+          secrets: |
+            node_auth_token=${{ secrets.NODE_AUTH_TOKEN }}
           tags: |
             ${{ steps.image.outputs.image }}:${{ needs.discover.outputs.sha }}
             ${{ steps.image.outputs.image }}:latest

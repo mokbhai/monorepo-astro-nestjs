@@ -62,6 +62,8 @@ const WEB_HOST_DOCKER_COMPOSE_SERVICE = `  web-host:
       dockerfile: apps/web-host/Dockerfile
       args:
         PUBLIC_API_URL: \${PUBLIC_API_URL:-}
+      secrets:
+        - node_auth_token
     environment:
       NODE_ENV: production
       PORT: 4321
@@ -80,6 +82,8 @@ const API_DOCKER_COMPOSE_SERVICE = `  api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      secrets:
+        - node_auth_token
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -97,11 +101,20 @@ volumes:
   postgres_data:
 `;
 
+// `@jainparichay/*` packages are fetched from GitHub Packages during the
+// image build, so both Dockerfiles mount this Compose secret and expect it
+// wired here regardless of which frontend/backend service is present.
+const NODE_AUTH_TOKEN_DOCKER_COMPOSE_SECRET = `
+secrets:
+  node_auth_token:
+    environment: NODE_AUTH_TOKEN
+`;
+
 const KNOWN_DOCKER_COMPOSE = `services:
-${POSTGRES_DOCKER_COMPOSE_SERVICE}${WEB_HOST_DOCKER_COMPOSE_SERVICE}${POSTGRES_DOCKER_COMPOSE_VOLUME.trimStart()}`;
+${POSTGRES_DOCKER_COMPOSE_SERVICE}${WEB_HOST_DOCKER_COMPOSE_SERVICE}${POSTGRES_DOCKER_COMPOSE_VOLUME.trimStart()}${NODE_AUTH_TOKEN_DOCKER_COMPOSE_SECRET}`;
 
 const API_AND_POSTGRES_DOCKER_COMPOSE = `services:
-${POSTGRES_DOCKER_COMPOSE_SERVICE}${API_DOCKER_COMPOSE_SERVICE}${POSTGRES_DOCKER_COMPOSE_VOLUME}`;
+${POSTGRES_DOCKER_COMPOSE_SERVICE}${API_DOCKER_COMPOSE_SERVICE}${POSTGRES_DOCKER_COMPOSE_VOLUME}${NODE_AUTH_TOKEN_DOCKER_COMPOSE_SECRET}`;
 
 const DOCKER_COMPOSE_CHANGES = [
   {

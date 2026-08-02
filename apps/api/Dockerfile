@@ -9,25 +9,49 @@ ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 # container builds resolve the packageManager version deterministically.
 RUN npm install --global corepack@0.34.7 && corepack enable
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 COPY apps/api/package.json apps/api/package.json
-COPY packages/config-typescript/package.json packages/config-typescript/package.json
-COPY packages/db/package.json packages/db/package.json
-COPY packages/types/package.json packages/types/package.json
 
-RUN pnpm install --frozen-lockfile
+# apps/api's postinstall runs `node ../../scripts/prisma.mjs generate`, so the
+# helper must exist on disk before `pnpm install` below (which triggers that
+# hook) — the rest of the source tree isn't copied until after the install
+# layer, to keep dependency resolution cached independent of source changes.
+COPY scripts/prisma.mjs scripts/prisma.mjs
+
+# `@jainparichay/*` is fetched from GitHub Packages, which requires auth. The
+# committed .npmrc supplies only the registry mapping (see Task 8); the
+# credential itself is mounted as a BuildKit secret and written to a
+# user-level npmrc that pnpm trusts, then removed in the same layer so it
+# never persists in an image layer.
+RUN --mount=type=secret,id=node_auth_token \
+    printf '//npm.pkg.github.com/:_authToken=%s\n' "$(cat /run/secrets/node_auth_token)" > /root/.npmrc \
+ && pnpm install --frozen-lockfile \
+ && rm -f /root/.npmrc
 
 COPY . .
 
-RUN pnpm turbo build --filter=@workspace-starter/api...
-
-RUN pnpm deploy --legacy --filter @workspace-starter/api --prod /app
+# Once the rest of the workspace (apps/web, apps/web-host, ...) lands on disk,
+# pnpm's automatic pre-run dependency check (`verify-deps-before-run`, on by
+# default) notices those importers now exist and silently re-installs the
+# full workspace before `turbo` runs — which needs registry auth again, for
+# the same reason as the install above.
+RUN --mount=type=secret,id=node_auth_token \
+    printf '//npm.pkg.github.com/:_authToken=%s\n' "$(cat /run/secrets/node_auth_token)" > /root/.npmrc \
+ && pnpm turbo build --filter=@workspace-starter/api... \
+ && pnpm deploy --legacy --filter @workspace-starter/api --prod /app \
+ && rm -f /root/.npmrc
 
 # `pnpm deploy` rebuilds /app/node_modules from the content-addressable store,
 # which discards the Prisma Client generated during the build. The generator
-# has no custom output, so regenerate it inside the deployed tree.
-RUN cd -P /app/node_modules/@workspace-starter/db \
- && PATH="$PWD/node_modules/.bin:$PATH" prisma generate
+# has no custom output, so regenerate it inside the deployed tree. This is an
+# inline command rather than a call to scripts/prisma.mjs: that helper
+# resolves paths relative to the monorepo layout (apps/api/package.json,
+# apps/api/node_modules), which no longer exists once `pnpm deploy` has
+# flattened the tree into /app. `@jainparichay/db`'s prisma.config.ts throws
+# if DATABASE_URL is unset (it's loaded even for `generate`), so supply a
+# placeholder — this never connects to a database.
+RUN cd -P /app/node_modules/@jainparichay/db \
+ && DATABASE_URL="postgresql://placeholder" PATH="$PWD/node_modules/.bin:$PATH" prisma generate
 
 FROM node:22-slim AS runtime
 

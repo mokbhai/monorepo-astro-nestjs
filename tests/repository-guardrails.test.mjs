@@ -160,7 +160,7 @@ test('combined web-host image deploys API, frontend, and migration runtime depen
   assert.equal(manifest.dependencies['@workspace-starter/web'], 'workspace:*');
   assert.match(
     dockerfile,
-    /pnpm deploy --legacy --filter @workspace-starter\/web-host --prod \/app/,
+    /pnpm deploy --legacy --filter @workspace-starter\/web-host --prod --ignore-scripts \/app/,
   );
   assert.match(dockerfile, /COPY --from=build --chown=node:node \/app \/app/);
   assert.match(dockerfile, /CMD \["\/usr\/local\/bin\/web-host-entrypoint"\]/);

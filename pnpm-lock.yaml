@@ -276,6 +276,18 @@ importers:
       '@jainparichay/db':
         specifier: ^0.1.0
         version: 0.1.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+      '@jainparichay/i18n':
+        specifier: ^0.1.0
+        version: 0.1.0
+      '@jainparichay/storage':
+        specifier: ^0.1.0
+        version: 0.1.0
+      '@jainparichay/types':
+        specifier: ^0.1.0
+        version: 0.1.0
+      '@jainparichay/ui':
+        specifier: ^0.1.0
+        version: 0.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@workspace-starter/api':
         specifier: workspace:*
         version: link:../api
