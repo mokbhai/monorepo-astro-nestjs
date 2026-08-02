@@ -84,12 +84,21 @@ cp .env.example .env
 docker compose up -d postgres
 ```
 
-### 3. Install and run
+### 3. Install, migrate, and run
 
 ```bash
 pnpm install
+pnpm db:deploy
 pnpm dev
 ```
+
+`pnpm install` must come first — `db:deploy` runs against the Prisma Client
+that `pnpm install` generates. `db:deploy` then applies the migrations
+shipped inside `@jainparichay/db`, which is what creates the tables on a
+fresh database; skipping it leaves the API able to boot but unable to answer
+any real query. (Use `db:deploy`, not `db:migrate`, for this — `migrate dev`
+is for authoring new migrations during development and can prompt or reset
+the database, which is the wrong behavior for a first-run setup step.)
 
 Default local ports:
 
